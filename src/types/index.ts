@@ -112,6 +112,11 @@ export interface StudyCard {
   scaffoldLevel?: 'Foundation' | 'Intermediate' | 'Advanced';
   customAnalogy?: string;    // Highly personalized layman analogy
 
+  // Phase 20: Oracle Sniper Engine
+  trendEvolution?: string;   // How the topic shifted over 15 years
+  oracleConfidence?: number; // % probability score from the backtesting engine
+  formatPrediction?: string; // e.g., "Statement Analysis", "Pair Matching"
+
   // SRS metadata
   srs: SRSData;
 
@@ -198,6 +203,9 @@ export interface DBCard {
   source_pdf: string | null;
   scaffold_level: 'Foundation' | 'Intermediate' | 'Advanced';
   custom_analogy: string | null;
+  trend_evolution: string | null;
+  oracle_confidence: number | null;
+  format_prediction: string | null;
   ease_factor: number;
   interval: number;
   repetitions: number;
@@ -257,6 +265,9 @@ export interface ExtractedCard {
   examName?: string;
   scaffoldLevel?: 'Foundation' | 'Intermediate' | 'Advanced';
   customAnalogy?: string;
+  trendEvolution?: string;
+  oracleConfidence?: number;
+  formatPrediction?: string;
 }
 
 /** 24-Hour Ephemeral Story for Current Affairs */
@@ -270,4 +281,15 @@ export interface CurrentAffairStory {
 
   // Client-populated relation if fetched together
   mcqCard?: StudyCard;
+}
+
+/** Oracle Auto-Calibrations from the Backtesting Loop */
+export interface OracleCalibration {
+  id: string;
+  year: number;
+  predictedThemes?: any;
+  actualThemes: any;
+  deviationAnalysis?: string;
+  learnedLogicWeights?: any;
+  createdAt: string;
 }

@@ -10,10 +10,10 @@ import { usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
 
 const NAV_ITEMS = [
-    { href: '/', label: 'Study', icon: '📚', activeIcon: '📖' },
-    { href: '/mains', label: 'Mains', icon: '✍️', activeIcon: '📝' },
-    { href: '/dashboard', label: 'Insights', icon: '📊', activeIcon: '📈' },
-    { href: '/admin/ingest', label: 'Admin', icon: '⚙️', activeIcon: '🛠️' },
+    { href: '/', label: 'Feed', icon: '⚡', activeIcon: '⚡' },
+    { href: '/mains', label: 'Write', icon: '✍️', activeIcon: '📝' },
+    { href: '/library', label: 'Vault', icon: '📂', activeIcon: '📁' },
+    { href: '/dashboard', label: 'Profile', icon: '👤', activeIcon: '🎯' },
 ];
 
 export default function BottomNav() {

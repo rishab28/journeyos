@@ -26,6 +26,7 @@ export default function StudyFeed() {
     const isListenMode = useSRSStore((s) => s.isListenMode);
     const toggleListenMode = useSRSStore((s) => s.toggleListenMode);
     const [activeIndex, setActiveIndex] = useState(0);
+    const [activeFilter, setActiveFilter] = useState('All');
     const [burnoutTimer, setBurnoutTimer] = useState(30);
     const [isRapidFire, setIsRapidFire] = useState(false);
     const [showViralFomo, setShowViralFomo] = useState(false);
@@ -139,6 +140,13 @@ export default function StudyFeed() {
         );
     }
 
+    const SUBJECTS = ['All', 'Polity', 'History', 'Geography', 'Economy', 'Environment', 'Sci & Tech'];
+
+    // Filter cards based on active subject selection
+    const filteredCards = activeFilter === 'All'
+        ? cards
+        : cards.filter(c => c.subject?.toLowerCase() === activeFilter.toLowerCase());
+
     return (
         <div
             ref={feedRef}
@@ -146,12 +154,30 @@ export default function StudyFeed() {
             style={{ scrollSnapType: 'y mandatory', WebkitOverflowScrolling: 'touch' }}
         >
             {/* ─── Ultra-Subtle Progress Line ─── */}
-            <div className="fixed top-0 left-0 right-0 z-50 h-[1px] bg-white/5">
+            <div className="fixed top-0 left-0 right-0 z-[60] h-[1px] bg-white/5">
                 <motion.div
                     className="h-full bg-white/40"
-                    animate={{ width: `${((activeIndex + 1) / cards.length) * 100}%` }}
+                    animate={{ width: `${cards.length > 0 ? ((activeIndex + 1) / filteredCards.length) * 100 : 0}%` }}
                     transition={{ duration: 0.4, ease: 'easeOut' }}
                 />
+            </div>
+
+            {/* ─── Top Subject Filter Chips ─── */}
+            <div className="fixed top-4 left-0 right-0 z-[60] px-4">
+                <div className="max-w-xl mx-auto flex overflow-x-auto gap-2 pb-2 scrollbar-none snap-x pointer-events-auto mask-edges">
+                    {SUBJECTS.map((sub, i) => (
+                        <button
+                            key={sub}
+                            onClick={() => { setActiveFilter(sub); setActiveIndex(0); }}
+                            className={`snap-start whitespace-nowrap px-4 py-1.5 rounded-full border text-[11px] transition-all font-bold tracking-widest uppercase shadow-sm ${activeFilter === sub
+                                    ? 'bg-white text-black border-transparent shadow-[0_4px_10px_rgba(255,255,255,0.2)]'
+                                    : 'bg-black/50 backdrop-blur-md border-white/10 text-white/60 hover:text-white hover:bg-white/10'
+                                }`}
+                        >
+                            {sub}
+                        </button>
+                    ))}
+                </div>
             </div>
 
             {/* ─── Mastermind Focus Pivot ─── */}
@@ -180,12 +206,17 @@ export default function StudyFeed() {
             {/* ─── Minimal Index Counter ─── */}
             <div className="fixed bottom-8 right-6 z-50 pointer-events-none">
                 <span className="text-[11px] font-black text-white/30 tracking-widest uppercase">
-                    {activeIndex + 1} / {cards.length}
+                    {filteredCards.length > 0 ? activeIndex + 1 : 0} / {filteredCards.length}
                 </span>
             </div>
 
 
-            {cards.map((card, index) => (
+            {filteredCards.length === 0 ? (
+                <div className="w-full h-screen flex flex-col items-center justify-center pt-20">
+                    <span className="text-4xl mb-4 opacity-50 block">📭</span>
+                    <p className="text-white/40 font-mono text-sm uppercase tracking-widest">No Intel for {activeFilter}</p>
+                </div>
+            ) : filteredCards.map((card, index) => (
                 <div
                     key={card.id}
                     ref={(el) => { cardRefs.current[index] = el; }}
@@ -199,7 +230,7 @@ export default function StudyFeed() {
                         isRapidFire={isRapidFire}
                         onAnswered={() => {
                             // If there is a next card, scroll to it smoothly
-                            if (index + 1 < cards.length) {
+                            if (index + 1 < filteredCards.length) {
                                 cardRefs.current[index + 1]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                             } else {
                                 // Scroll to the end screen
@@ -226,7 +257,7 @@ export default function StudyFeed() {
                         Session Complete
                     </h2>
                     <p className="text-white/40 text-sm mb-8 max-w-xs mx-auto">
-                        You&apos;ve reviewed all {cards.length} cards. Great work, future officer!
+                        You&apos;ve reviewed all {filteredCards.length} cards in this queue. Great work, future officer!
                     </p>
                     <motion.button
                         onClick={() => {

@@ -15,6 +15,7 @@ import SyllabusMap from '@/components/SyllabusMap';
 import FailureAudit from '@/components/FailureAudit';
 import AutonomousDashboard from '@/components/AutonomousDashboard';
 import SynapseGraph from '@/components/SynapseGraph';
+import Link from 'next/link';
 import { useProgressStore } from '@/store/progressStore';
 import { useSRSStore } from '@/store/srsStore';
 
@@ -83,9 +84,18 @@ export default function DashboardPage() {
                         </h1>
                         <p className="text-[11px] sm:text-[12px] text-white/40 mt-1.5 font-extrabold tracking-[0.25em] uppercase">PERFORMANCE INTELLIGENCE</p>
                     </div>
-                    {/* User Avatar Placeholder */}
-                    <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center">
-                        <span className="text-sm">⚡️</span>
+                    {/* System/Admin Access */}
+                    <div className="flex items-center gap-3">
+                        <Link href="/admin" className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 text-[10px] font-bold uppercase tracking-widest hover:bg-red-500/20 transition-colors">
+                            <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                            War Room
+                        </Link>
+                        {/* User Avatar Placeholder */}
+                        <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center relative">
+                            <span className="text-sm">⚡️</span>
+                            {/* Mobile War Room Dot */}
+                            <Link href="/admin" className="sm:hidden absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-red-500 rounded-full border-2 border-[#0a0a0a] shadow-[0_0_10px_rgba(239,68,68,0.5)]" />
+                        </div>
                     </div>
                 </div>
 

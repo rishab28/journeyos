@@ -316,8 +316,22 @@ export default function StudyCard({ card, isActive, isRapidFire, onAnswered }: S
                         animate={{ rotateY: isFlipped ? 180 : 0 }}
                         transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }} // Apple-like spring/easing
                     >
-                        <div className="flex-1 flex items-center justify-center w-full max-w-xl mx-auto my-auto min-h-0 shrink-0">
-                            <p className={`${questionSize(card.front)} text-white text-balance text-left w-full mb-12 sm:mb-20 px-2 sm:px-0`}>
+                        <div className="flex-1 flex flex-col items-center justify-center w-full max-w-xl mx-auto my-auto min-h-0 shrink-0 relative mt-4">
+                            {/* Oracle Lethality Badge (Progressive Disclosure Hook) */}
+                            {card.oracleConfidence && (
+                                <motion.div
+                                    initial={{ opacity: 0, scale: 0.8 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    className="absolute -top-12 sm:-top-16 left-2 sm:left-0 flex items-center gap-2 bg-[#111] border border-[#00ffcc]/30 px-3 py-1.5 rounded-full shadow-[0_0_15px_rgba(0,255,204,0.15)]"
+                                >
+                                    <span className="text-[#00ffcc] text-sm animate-pulse">🔥</span>
+                                    <span className="text-[#00ffcc] font-black tracking-widest text-[10px] sm:text-[11px] uppercase">
+                                        {card.oracleConfidence}% Lethality
+                                    </span>
+                                </motion.div>
+                            )}
+
+                            <p className={`${questionSize(card.front)} text-white text-balance text-left w-full mb-12 sm:mb-20 px-2 sm:px-0 mt-4`}>
                                 {card.front}
                             </p>
                         </div>
@@ -368,7 +382,7 @@ export default function StudyCard({ card, isActive, isRapidFire, onAnswered }: S
                             </div>
 
                             {/* Minimalist Add-ons (Progressive Disclosure) */}
-                            {(!showDeepDive && (card.firstPrinciples || card.explanation || card.mainsPoint || card.topperTrick || card.currentAffairs)) && (
+                            {(!showDeepDive && (card.firstPrinciples || card.explanation || card.mainsPoint || card.topperTrick || card.currentAffairs || card.trendEvolution)) && (
                                 <button
                                     onClick={(e) => { e.stopPropagation(); setShowDeepDive(true); }}
                                     className="mt-2 mx-auto w-max px-6 py-3 rounded-full border border-white/10 bg-white/5 text-white/70 hover:text-white hover:bg-white/10 transition-colors text-sm font-bold uppercase tracking-widest flex items-center gap-3 backdrop-blur-md"
@@ -406,6 +420,18 @@ export default function StudyCard({ card, isActive, isRapidFire, onAnswered }: S
                                         <div className="border-l-[3px] border-blue-500/40 pl-5 py-2">
                                             <h4 className="text-[10px] text-blue-400 uppercase tracking-[0.25em] font-extrabold mb-2">Logic / 'Kyun'</h4>
                                             <p className="text-white/80 text-[16px] sm:text-[18px] leading-[1.6] tracking-tight">{card.explanation}</p>
+                                        </div>
+                                    )}
+                                    {/* Oracle Trend Evolution */}
+                                    {card.trendEvolution && (
+                                        <div className="border-l-[3px] border-[#00ffcc]/60 pl-5 py-2">
+                                            <h4 className="text-[#00ffcc] text-[10px] uppercase tracking-[0.25em] font-extrabold mb-2 flex items-center gap-2">
+                                                <span className="text-sm">👁️</span> The Oracle Insight {card.oracleConfidence ? `[${card.oracleConfidence}% CONFIDENCE]` : ''}
+                                            </h4>
+                                            {card.formatPrediction && (
+                                                <div className="text-[10px] bg-[#00ffcc]/10 text-[#00ffcc] px-2 py-0.5 rounded w-max mb-2 font-mono uppercase tracking-widest">{card.formatPrediction}</div>
+                                            )}
+                                            <p className="text-white/80 text-[16px] sm:text-[18px] leading-[1.6] tracking-tight font-mono text-sm">{card.trendEvolution}</p>
                                         </div>
                                     )}
                                     {/* Live Synapse */}
