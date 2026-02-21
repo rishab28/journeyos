@@ -1,0 +1,4 @@
+This is a dummy text file for testing PDF ingestion.
+It has enough characters to pass the minimum 50 characters threshold.
+Here is some more text about the constitution. Fundamental rights are important. 
+The Indian parliament consists of the Lok Sabha and Rajya Sabha.

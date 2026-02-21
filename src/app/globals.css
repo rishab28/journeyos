@@ -1,26 +1,239 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/* ═══════════════════════════════════════════════════════════
+   JourneyOS — Elite Immersive Global Styles
+   ═══════════════════════════════════════════════════════════ */
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-inter);
+  --font-outfit: var(--font-outfit);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* ─── Base ───────────────────────────────────────────────── */
+
+:root {
+  --bg-primary: #0b0e17;
+  --bg-secondary: #0f1320;
+  --foreground: #f0f0f5;
+  color-scheme: dark;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg-primary);
+  color: var(--foreground);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  touch-action: manipulation;
+}
+
+/* ─── Animated Background ────────────────────────────────── */
+
+@keyframes bg-drift {
+
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+
+  33% {
+    transform: translate(30px, -20px) scale(1.05);
+  }
+
+  66% {
+    transform: translate(-20px, 15px) scale(0.97);
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@keyframes bg-drift-reverse {
+
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+
+  33% {
+    transform: translate(-25px, 20px) scale(1.03);
+  }
+
+  66% {
+    transform: translate(15px, -25px) scale(0.98);
+  }
+}
+
+.bg-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(100px);
+  pointer-events: none;
+  will-change: transform;
+}
+
+.bg-orb-1 {
+  width: 50vw;
+  height: 50vw;
+  top: -15%;
+  left: -10%;
+  background: radial-gradient(circle, rgba(99, 60, 200, 0.12), transparent 70%);
+  animation: bg-drift 20s ease-in-out infinite;
+}
+
+.bg-orb-2 {
+  width: 40vw;
+  height: 40vw;
+  bottom: -10%;
+  right: -5%;
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.08), transparent 70%);
+  animation: bg-drift-reverse 25s ease-in-out infinite;
+}
+
+.bg-orb-3 {
+  width: 30vw;
+  height: 30vw;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle, rgba(168, 85, 247, 0.06), transparent 70%);
+  animation: bg-drift 18s ease-in-out infinite;
+}
+
+/* ─── Scroll Snap Feed ───────────────────────────────────── */
+
+.study-feed {
+  scroll-snap-type: y mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.study-feed::-webkit-scrollbar {
+  display: none;
+}
+
+.study-card-container {
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}
+
+/* ─── 3D Perspective ─────────────────────────────────────── */
+
+.perspective-1000 {
+  perspective: 1200px;
+}
+
+/* ─── Glassmorphism Card ─────────────────────────────────── */
+
+.glass-card {
+  background: rgba(15, 19, 32, 0.65);
+  backdrop-filter: blur(24px) saturate(1.2);
+  -webkit-backdrop-filter: blur(24px) saturate(1.2);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.glass-card-back {
+  background: rgba(6, 30, 25, 0.7);
+  backdrop-filter: blur(24px) saturate(1.2);
+  -webkit-backdrop-filter: blur(24px) saturate(1.2);
+  border: 1px solid rgba(16, 185, 129, 0.12);
+}
+
+/* ─── Floating Bottom Bar ────────────────────────────────── */
+
+.floating-bar {
+  background: rgba(10, 14, 24, 0.75);
+  backdrop-filter: blur(30px) saturate(1.5);
+  -webkit-backdrop-filter: blur(30px) saturate(1.5);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* ─── Scrollbar (non-feed) ───────────────────────────────── */
+
+::-webkit-scrollbar {
+  width: 3px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* ─── Selection ──────────────────────────────────────────── */
+
+::selection {
+  background: rgba(139, 92, 246, 0.3);
+  color: #fff;
+}
+
+/* ─── Focus ──────────────────────────────────────────────── */
+
+:focus-visible {
+  outline: 2px solid rgba(139, 92, 246, 0.4);
+  outline-offset: 2px;
+  border-radius: 12px;
+}
+
+/* ─── Premium Animations ─────────────────────────────────── */
+
+@keyframes pulse-glow {
+
+  0%,
+  100% {
+    box-shadow: 0 0 20px rgba(139, 92, 246, 0.1);
+  }
+
+  50% {
+    box-shadow: 0 0 40px rgba(139, 92, 246, 0.2);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes subtle-float {
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 3s ease-in-out infinite;
+}
+
+.animate-shimmer {
+  animation: shimmer 2s ease-in-out infinite;
+}
+
+.animate-float {
+  animation: subtle-float 6s ease-in-out infinite;
 }

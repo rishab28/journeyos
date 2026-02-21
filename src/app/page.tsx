@@ -1,65 +1,124 @@
-import Image from "next/image";
+'use client';
 
-export default function Home() {
+// ═══════════════════════════════════════════════════════════
+// JourneyOS — Clean Study Home (Zero Noise)
+// Immersive full-screen study feed, nothing else
+// ═══════════════════════════════════════════════════════════
+
+import { useState, useEffect } from 'react';
+import { AnimatePresence } from 'framer-motion';
+import StudyFeed from '@/components/StudyFeed';
+import { useSRSStore } from '@/store/srsStore';
+import { useProgressStore } from '@/store/progressStore';
+import GamifiedOnboarding from '@/components/GamifiedOnboarding';
+
+// Discovery Engine Imports
+import CurrentAffairStories from '@/components/CurrentAffairStories';
+import DiscoveryGrid from '@/components/DiscoveryGrid';
+import VerticalReels from '@/components/VerticalReels';
+import { getDiscoveryFeed } from '@/app/actions/getDiscoveryFeed';
+import { getActiveStories } from '@/app/actions/getStories';
+import { StudyCard, CurrentAffairStory } from '@/types';
+
+export default function HomePage() {
+  const totalCards = useSRSStore((s) => s.cards.length);
+  const todayReviewed = useProgressStore((s) => s.todayReviewed);
+  const currentStreak = useProgressStore((s) => s.currentStreak);
+  const upscIQ = useProgressStore((s) => s.upscIQ);
+
+  // Discovery / Explore State
+  const [activeTab, setActiveTab] = useState<'study' | 'explore'>('study');
+  const [stories, setStories] = useState<CurrentAffairStory[]>([]);
+  const [exploreCards, setExploreCards] = useState<StudyCard[]>([]);
+  const [reelsStartId, setReelsStartId] = useState<string | null>(null);
+  const [isLoadingExplore, setIsLoadingExplore] = useState(false);
+
+  // Load Explore Data
+  useEffect(() => {
+    if (activeTab === 'explore' && exploreCards.length === 0) {
+      setIsLoadingExplore(true);
+      Promise.all([
+        getActiveStories(),
+        getDiscoveryFeed(20) // Initial batch size
+      ]).then(([storiesRes, feedRes]) => {
+        if (storiesRes.success) setStories(storiesRes.stories);
+        if (feedRes.success) setExploreCards(feedRes.cards);
+      }).finally(() => {
+        setIsLoadingExplore(false);
+      });
+    }
+  }, [activeTab, exploreCards.length]);
+
+  if (upscIQ === 0) {
+    return <GamifiedOnboarding onComplete={() => window.location.reload()} />;
+  }
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+    <main className="relative w-full h-screen overflow-hidden flex flex-col bg-[#0b0e17]">
+      {/* Ambient background */}
+      <div className="fixed inset-0 z-0 pointer-events-none">
+        <div className="bg-orb bg-orb-1 opacity-60" />
+        <div className="bg-orb bg-orb-2 opacity-60" />
+        <div className="bg-orb bg-orb-3 opacity-60" />
+      </div>
+
+      {/* ── Top Navigation Bar ── */}
+      <div className="absolute top-0 inset-x-0 z-50 flex flex-col pt-12 pb-2 bg-gradient-to-b from-black/80 via-black/40 to-transparent">
+        <div className="flex justify-center items-center gap-6 px-4">
+          <button
+            onClick={() => setActiveTab('study')}
+            className={`text-lg font-bold transition-all tracking-wider ${activeTab === 'study' ? 'text-white scale-110 drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]' : 'text-white/40 hover:text-white/80'}`}
+            style={{ fontFamily: 'var(--font-outfit)' }}
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+            STUDY
+          </button>
+          <button
+            onClick={() => setActiveTab('explore')}
+            className={`text-lg font-bold transition-all tracking-wider ${activeTab === 'explore' ? 'text-white scale-110 drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]' : 'text-white/40 hover:text-white/80'}`}
+            style={{ fontFamily: 'var(--font-outfit)' }}
           >
-            Documentation
-          </a>
+            EXPLORE
+          </button>
         </div>
-      </main>
-    </div>
+      </div>
+
+      {/* ── Main Content Area ── */}
+      <div className="relative z-10 flex-1 min-h-0 pt-24 overflow-y-auto scrollbar-none">
+        {activeTab === 'study' ? (
+          <StudyFeed />
+        ) : (
+          <div className="w-full pb-24">
+            {/* 1. Stories Carousel */}
+            {!isLoadingExplore && stories.length > 0 && (
+              <CurrentAffairStories stories={stories} />
+            )}
+
+            {/* 2. Masonry Discovery Grid */}
+            {isLoadingExplore ? (
+              <div className="w-full py-20 flex flex-col items-center justify-center">
+                <span className="text-3xl animate-bounce mb-4 block">🧠</span>
+                <p className="text-white/40 text-sm font-bold animate-pulse">Scanning the void for intel...</p>
+              </div>
+            ) : (
+              <DiscoveryGrid
+                cards={exploreCards}
+                onCardClick={(id: string) => setReelsStartId(id)}
+              />
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* ── Full Screen Vertical Reels Overlay ── */}
+      <AnimatePresence>
+        {reelsStartId && (
+          <VerticalReels
+            cards={exploreCards}
+            layoutIdStart={reelsStartId}
+            onClose={() => setReelsStartId(null)}
+          />
+        )}
+      </AnimatePresence>
+    </main>
   );
 }
