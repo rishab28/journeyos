@@ -112,10 +112,19 @@ export interface StudyCard {
   scaffoldLevel?: 'Foundation' | 'Intermediate' | 'Advanced';
   customAnalogy?: string;    // Highly personalized layman analogy
 
-  // Phase 20: Oracle Sniper Engine
+  // Phase 20-21: Oracle Sniper Engine 2.0
   trendEvolution?: string;   // How the topic shifted over 15 years
   oracleConfidence?: number; // % probability score from the backtesting engine
   formatPrediction?: string; // e.g., "Statement Analysis", "Pair Matching"
+
+  // Lethality 2.0 (Mathematical Proof)
+  staticPillarValue?: number;      // S.P.V
+  causalAnchor?: number;           // C.A
+  optionEvolution?: number;        // O.E
+  crossExamSignals?: number;       // X.S
+  greyAreaComplexity?: number;     // G.C
+  triggerDna?: string;             // Why this question exists?
+  evolutionPath?: string;          // Historical trend evolution summary
 
   // SRS metadata
   srs: SRSData;
@@ -206,6 +215,15 @@ export interface DBCard {
   trend_evolution: string | null;
   oracle_confidence: number | null;
   format_prediction: string | null;
+
+  // Lethality 2.0
+  static_pillar_value: number;
+  causal_anchor: number;
+  option_evolution: number;
+  cross_exam_signals: number;
+  grey_area_complexity: number;
+  trigger_dna: string | null;
+  evolution_path: string | null;
   ease_factor: number;
   interval: number;
   repetitions: number;
@@ -291,5 +309,9 @@ export interface OracleCalibration {
   actualThemes: any;
   deviationAnalysis?: string;
   learnedLogicWeights?: any;
+  causalAudit?: any;         // Causal linkages for every question
+  matchPercentage?: number;
+  unpredictedTopics?: string[];
+  patternShift?: string;
   createdAt: string;
 }

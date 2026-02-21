@@ -14,6 +14,7 @@ import { useProgressStore } from '@/store/progressStore';
 import { askLiveAI } from '@/app/actions/askAI';
 import SuggestEditModal from './SuggestEditModal';
 import { toast } from 'sonner';
+import { calculateLethalityScore, getLethalityBreakdown } from '@/lib/oracle/lethalityEngine';
 
 interface StudyCardProps {
     card: StudyCardType;
@@ -423,7 +424,7 @@ export default function StudyCard({ card, isActive, isRapidFire, onAnswered }: S
                                         </div>
                                     )}
                                     {/* Oracle Trend Evolution */}
-                                    {card.trendEvolution && (
+                                    {card.trendEvolution && !card.evolutionPath && (
                                         <div className="border-l-[3px] border-[#00ffcc]/60 pl-5 py-2">
                                             <h4 className="text-[#00ffcc] text-[10px] uppercase tracking-[0.25em] font-extrabold mb-2 flex items-center gap-2">
                                                 <span className="text-sm">👁️</span> The Oracle Insight {card.oracleConfidence ? `[${card.oracleConfidence}% CONFIDENCE]` : ''}
@@ -432,6 +433,44 @@ export default function StudyCard({ card, isActive, isRapidFire, onAnswered }: S
                                                 <div className="text-[10px] bg-[#00ffcc]/10 text-[#00ffcc] px-2 py-0.5 rounded w-max mb-2 font-mono uppercase tracking-widest">{card.formatPrediction}</div>
                                             )}
                                             <p className="text-white/80 text-[16px] sm:text-[18px] leading-[1.6] tracking-tight font-mono text-sm">{card.trendEvolution}</p>
+                                        </div>
+                                    )}
+
+                                    {/* Oracle 2.0 Transparency (S.P.V / C.A Proof) */}
+                                    {(card.evolutionPath || card.triggerDna || card.staticPillarValue) && (
+                                        <div className="border border-[#00ffcc]/20 bg-[#00ffcc]/[0.02] rounded-2xl p-5 space-y-4">
+                                            <h4 className="text-[#00ffcc] text-[10px] uppercase tracking-[0.25em] font-extrabold mb-2 flex items-center gap-2">
+                                                <span className="text-sm">🔬</span> Oracle Logic Transparency
+                                            </h4>
+
+                                            {card.triggerDna && (
+                                                <div>
+                                                    <span className="text-[10px] text-white/30 uppercase tracking-widest font-bold">Trigger DNA</span>
+                                                    <p className="text-white/80 text-sm leading-relaxed mt-1">{card.triggerDna}</p>
+                                                </div>
+                                            )}
+
+                                            {card.evolutionPath && (
+                                                <div>
+                                                    <span className="text-[10px] text-white/30 uppercase tracking-widest font-bold">Evolution Path</span>
+                                                    <p className="text-white/60 text-[13px] leading-relaxed mt-1 font-mono">{card.evolutionPath}</p>
+                                                </div>
+                                            )}
+
+                                            {card.staticPillarValue !== undefined && (
+                                                <div className="pt-2 border-t border-white/5">
+                                                    <span className="text-[10px] text-fuchsia-400/80 uppercase tracking-widest font-bold">Mathematical Proof</span>
+                                                    <p className="text-[#00ffcc]/70 text-[12px] leading-relaxed mt-1 font-mono italic">
+                                                        {getLethalityBreakdown({
+                                                            spv: card.staticPillarValue || 0,
+                                                            ca: card.causalAnchor || 0,
+                                                            oe: card.optionEvolution || 0,
+                                                            xs: card.crossExamSignals || 0,
+                                                            gc: card.greyAreaComplexity || 0
+                                                        })}
+                                                    </p>
+                                                </div>
+                                            )}
                                         </div>
                                     )}
                                     {/* Live Synapse */}

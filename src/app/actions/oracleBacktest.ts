@@ -16,15 +16,46 @@ interface BacktestResult {
     error?: string;
 }
 
+/**
+ * PROMPT: CAUSAL AUDIT (The Why)
+ */
+const CAUSAL_AUDIT_PROMPT = `You are the JourneyOS 'Causal Architect'.
+You are auditing the ACTUAL {YEAR} UPSC Paper.
+
+THEMES EXTRACTED FROM {YEAR}:
+{ACTUAL_THEMES}
+
+VAULT INTELLIGENCE (News, Books, Triggers):
+{VAULT_CONTEXT}
+
+TASK: For each theme, identify its 'Causal DNA'.
+1. Identify the 'Causal Anchor' (Why did they ask this in {YEAR}? Was there a 50-year anniversary? A Supreme Court Case? A new Policy?).
+2. Map to Standard Book: Which Chapter/Source from the vault contains this? (e.g. Laxmikanth Ch. 12).
+3. Assign Lethality Components: (S.P.V, C.A, O.E, X.S, G.C) on a scale of 1-10.
+
+Output JSON:
+{
+  "causalMap": [
+    {
+      "theme": "string",
+      "trigger": "string",
+      "source": "string",
+      "weights": { "spv": 1-10, "ca": 1-10, "oe": 1-10, "xs": 1-10, "gc": 1-10 }
+    }
+  ],
+  "structuralLogicShift": "How UPSC changed its logic in {YEAR}"
+}`;
+
 // Prompt 1: Generate 5 Independent Sets
-const GENERATION_PROMPT = `You are the JourneyOS 'Time-Traveling Examiner'. 
+const GENERATION_PROMPT = `You are the JourneyOS 'Time-Traveling Examiner'.
 Your task is to predict the {NEXT_YEAR} UPSC/HAS paper based on historical learnings.
 
 You are currently standing at the end of {YEAR}.
 PREVIOUS LEARNED LOGIC FROM {PREV_YEAR}: {LEARNED_LOGIC}
 ACTUAL THEMES EXTRACTED FROM {YEAR}: {ACTUAL_THEMES}
+CAUSAL AUDIT OF {YEAR}: {CAUSAL_AUDIT}
 
-TASK: Based on the structural shifts in {YEAR}, predict 10 highly probable specific themes and 2 question formats for {NEXT_YEAR}.
+TASK: Based on the structural shifts and causal triggers in {YEAR}, predict 10 highly probable specific themes and 2 question formats for {NEXT_YEAR}.
 Be adventurous but logical.
 
 Output JSON:
@@ -128,6 +159,26 @@ export async function runOracleBacktestCycle(
         const themeExtractionModel = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
         const themeResponse = await themeExtractionModel.generateContent(`Extract exactly 15 core syllabus themes tested in this text. Output ONLY a comma separated list. TEXT:\n${paperText.substring(0, 15000)}`);
         const actualThemesForThisYear = themeResponse.response.text();
+        const themesArray = actualThemesForThisYear.split(',').map(t => t.trim());
+
+        // 2.5 CAUSAL AUDIT: Query Intelligence Vault for each theme
+        const vaultContexts = [];
+        for (const theme of themesArray.slice(0, 5)) { // Limit to top 5 to avoid token boom
+            const { data: matches } = await supabase.rpc('match_vault_content', {
+                query_embedding: await generateEmbedding(theme),
+                match_threshold: 0.5,
+                match_count: 3
+            });
+            if (matches) vaultContexts.push(...matches);
+        }
+
+        const auditPrompt = CAUSAL_AUDIT_PROMPT
+            .replace(/{YEAR}/g, year.toString())
+            .replace(/{ACTUAL_THEMES}/g, actualThemesForThisYear)
+            .replace(/{VAULT_CONTEXT}/g, JSON.stringify(vaultContexts.map(v => ({ source: v.source_name, content: v.content, meta: v.metadata }))));
+
+        const auditResponse = await valModel.generateContent(auditPrompt);
+        const causalAuditResult = JSON.parse(auditResponse.response.text());
 
         // 3. Validation Phase (If we have predictions carried over from last year)
         let validationResult: any = null;
@@ -150,7 +201,8 @@ export async function runOracleBacktestCycle(
             .replace(/{NEXT_YEAR}/g, (year + 1).toString())
             .replace(/{PREV_YEAR}/g, previousYear.toString())
             .replace(/{LEARNED_LOGIC}/g, JSON.stringify(activeLogicToUseForNextYear))
-            .replace(/{ACTUAL_THEMES}/g, actualThemesForThisYear);
+            .replace(/{ACTUAL_THEMES}/g, actualThemesForThisYear)
+            .replace(/{CAUSAL_AUDIT}/g, causalAuditResult.structuralLogicShift);
 
         for (let i = 0; i < 5; i++) {
             const res = await genModel.generateContent(genPrompt);
@@ -158,17 +210,18 @@ export async function runOracleBacktestCycle(
         }
 
         // 5. Database Upserts
-        // Save validation data to THIS year's record
+        // Save validation data and CAUSAL AUDIT to THIS year's record
         if (validationResult) {
             await supabase.from('oracle_calibrations').upsert({
                 year: year,
-                actual_themes: actualThemesForThisYear.split(',').map((t: string) => t.trim()),
+                actual_themes: themesArray,
                 predicted_themes: validationResult.consensusPredictionForThisYear,
                 deviation_analysis: validationResult.patternShift,
                 learned_logic_weights: validationResult.evolvedWeights,
                 match_percentage: validationResult.matchPercentage,
                 unpredicted_topics: validationResult.unpredictedTopics,
-                pattern_shift: validationResult.patternShift
+                pattern_shift: validationResult.patternShift,
+                causal_audit: causalAuditResult
             }, { onConflict: 'year' });
         }
 

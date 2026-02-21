@@ -544,9 +544,40 @@ export const useSRSStore = create<SRSStore>((set, get) => ({
                 const { activeSubject, activeTopic, activeChapter } = get();
                 const isMastermindMode = activeSubject !== 'Mixed' || activeTopic || activeChapter;
 
-                const lethalRate = (aliveCards.length < 100 || isMastermindMode) ? 1.0 : 0.2;
-                const sliceCount = Math.max(Math.min(aliveCards.length, 20), Math.ceil(aliveCards.length * lethalRate));
-                const topLethalCards = aliveCards.slice(0, sliceCount);
+                let finalFeed: StudyCard[] = [];
+
+                if (isMastermindMode) {
+                    finalFeed = aliveCards.slice(0, 50); // Just give them everything they filtered for
+                } else {
+                    // THE SNIPER FEED INTERLEAVING (30% PYQ : 40% Predicted : 30% CA)
+                    const pyqs = aliveCards.filter(c => c.type === CardType.PYQ);
+                    const predicted = aliveCards.filter(c => (c.oracleConfidence || 0) > 80);
+                    const currentAffairs = aliveCards.filter(c => c.subject === Subject.CURRENT_AFFAIRS);
+                    const others = aliveCards.filter(c => c.type !== CardType.PYQ && (c.oracleConfidence || 0) <= 80 && c.subject !== Subject.CURRENT_AFFAIRS);
+
+                    const targetCount = 20; // Target daily batch size
+                    const counts = {
+                        pyq: Math.ceil(targetCount * 0.3),
+                        pred: Math.ceil(targetCount * 0.4),
+                        ca: Math.ceil(targetCount * 0.3)
+                    };
+
+                    // Interleave
+                    const slicePYQ = pyqs.slice(0, counts.pyq);
+                    const slicePred = predicted.slice(0, counts.pred);
+                    const sliceCA = currentAffairs.slice(0, counts.ca);
+
+                    finalFeed = [...slicePYQ, ...slicePred, ...sliceCA];
+
+                    // Fill remaining slots if any group is empty
+                    if (finalFeed.length < targetCount) {
+                        const remaining = others.slice(0, targetCount - finalFeed.length);
+                        finalFeed = [...finalFeed, ...remaining];
+                    }
+
+                    // Final shuffle of the interleaved batch to prevent grouping
+                    finalFeed.sort(() => Math.random() - 0.5);
+                }
 
                 // Discovery Engine (Unique values for filters)
                 const subjects = Array.from(new Set(data.map(c => c.subject as Subject)));
@@ -554,7 +585,7 @@ export const useSRSStore = create<SRSStore>((set, get) => ({
                 const chapters = Array.from(new Set(data.map(c => c.sub_topic).filter(Boolean)));
 
                 set({
-                    cards: topLethalCards,
+                    cards: finalFeed,
                     isLoading: false,
                     currentIndex: 0,
                     availableFilters: { subjects, topics, chapters }
