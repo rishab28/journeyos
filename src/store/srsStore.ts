@@ -3,6 +3,7 @@
 // ═══════════════════════════════════════════════════════════
 
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import {
     StudyCard,
     CardType,
@@ -342,9 +343,11 @@ interface SRSStore {
     };
 
     syncStatus: 'synced' | 'syncing' | 'error';
+    feedScrollTrigger: number;
 
     // Actions
     fetchLiveCards: () => Promise<void>;
+    fetchMoreCards: () => Promise<void>;
     submitReview: (cardId: string, recalled: boolean, failureReason?: string, certaintyScore?: number, timeToAnswerMs?: number) => Promise<void>;
     nextCard: () => void;
     previousCard: () => void;
@@ -355,440 +358,519 @@ interface SRSStore {
     dismissStoicIntervention: () => void;
     completeDiagnostic: (score: number) => void;
     toggleListenMode: () => void;
+    triggerFeedScroll: () => void;
 }
 
-export const useSRSStore = create<SRSStore>((set, get) => ({
-    cards: [],
-    currentIndex: 0,
-    reviewHistory: [],
-    isLoading: true,
+export const useSRSStore = create<SRSStore>()(
+    persist(
+        (set, get) => ({
+            cards: [],
+            currentIndex: 0,
+            reviewHistory: [],
+            isLoading: true,
 
-    needsDiagnostic: true, // Trigger on first open of a topic
-    diagnosticScore: 0,
-    hasPassedDiagnostic: false,
+            needsDiagnostic: true, // Trigger on first open of a topic
+            diagnosticScore: 0,
+            hasPassedDiagnostic: false,
 
-    sessionStartMs: Date.now(),
-    fastSwipeCount: 0,
-    isBurnoutMode: false,
-    burnoutEasyCardsRemaining: 0,
-    recentResults: [],
-    isStoicIntervention: false,
-    msi: 100,
-    isListenMode: false,
+            sessionStartMs: Date.now(),
+            fastSwipeCount: 0,
+            isBurnoutMode: false,
+            burnoutEasyCardsRemaining: 0,
+            recentResults: [],
+            isStoicIntervention: false,
+            msi: 100,
+            isListenMode: false,
 
-    activeSubject: 'Mixed',
-    activeTopic: null,
-    activeChapter: null,
-    syncStatus: 'synced',
+            activeSubject: 'Mixed',
+            activeTopic: null,
+            activeChapter: null,
+            syncStatus: 'synced',
+            feedScrollTrigger: 0,
 
-    availableFilters: {
-        subjects: [],
-        topics: [],
-        chapters: []
-    },
+            availableFilters: {
+                subjects: [],
+                topics: [],
+                chapters: []
+            },
 
-    completeDiagnostic: (score: number) => {
-        const passed = score >= 4;
-        set({ needsDiagnostic: false, diagnosticScore: score, hasPassedDiagnostic: passed });
-        get().fetchLiveCards(); // Re-fetch to apply filtering logic
-    },
+            completeDiagnostic: (score: number) => {
+                const passed = score >= 4;
+                set({ needsDiagnostic: false, diagnosticScore: score, hasPassedDiagnostic: passed });
+                get().fetchLiveCards(); // Re-fetch to apply filtering logic
+            },
 
-    toggleListenMode: () => set((state) => ({ isListenMode: !state.isListenMode })),
+            toggleListenMode: () => set((state) => ({ isListenMode: !state.isListenMode })),
 
-    setFilters: (filters) => {
-        set((state) => ({
-            ...state,
-            activeSubject: filters.subject !== undefined ? filters.subject : state.activeSubject,
-            activeTopic: filters.topic !== undefined ? filters.topic : state.activeTopic,
-            activeChapter: filters.chapter !== undefined ? filters.chapter : state.activeChapter,
-        }));
-        get().fetchLiveCards();
-    },
+            setFilters: (filters) => {
+                set((state) => ({
+                    ...state,
+                    activeSubject: filters.subject !== undefined ? filters.subject : state.activeSubject,
+                    activeTopic: filters.topic !== undefined ? filters.topic : state.activeTopic,
+                    activeChapter: filters.chapter !== undefined ? filters.chapter : state.activeChapter,
+                }));
+                get().fetchLiveCards();
+            },
 
-    fetchLiveCards: async () => {
-        set({ isLoading: true, sessionStartMs: Date.now(), fastSwipeCount: 0, isBurnoutMode: false });
-        try {
-            const { activeSubject, activeTopic, activeChapter } = get();
-            let query = supabase
-                .from('cards')
-                .select('*')
-                .eq('status', CardStatus.LIVE);
+            fetchLiveCards: async () => {
+                set({ isLoading: true, sessionStartMs: Date.now(), fastSwipeCount: 0, isBurnoutMode: false });
+                try {
+                    const { activeSubject, activeTopic, activeChapter } = get();
+                    let query = supabase
+                        .from('cards')
+                        .select('*')
+                        .eq('status', CardStatus.LIVE);
 
-            // Mastermind Filters
-            if (activeSubject !== 'Mixed') {
-                query = query.eq('subject', activeSubject);
-            }
-            if (activeTopic) {
-                query = query.eq('topic', activeTopic);
-            }
-            if (activeChapter) {
-                query = query.eq('sub_topic', activeChapter); // sub_topic used as chapter
-            }
+                    // Mastermind Filters
+                    if (activeSubject !== 'Mixed') {
+                        query = query.eq('subject', activeSubject);
+                    }
+                    if (activeTopic) {
+                        query = query.eq('topic', activeTopic);
+                    }
+                    if (activeChapter) {
+                        query = query.eq('sub_topic', activeChapter); // sub_topic used as chapter
+                    }
 
-            const { data, error } = await query;
+                    const { data, error } = await query;
 
-            if (error) throw error;
+                    if (error) throw error;
 
-            if (data && data.length > 0) {
-                // Grab upscIQ and accuracy from useProgressStore
+                    if (data && data.length > 0) {
+                        // Grab upscIQ and accuracy from useProgressStore
+                        // eslint-disable-next-line @typescript-eslint/no-require-imports
+                        const { useProgressStore } = require('./progressStore');
+                        const { upscIQ, accuracy } = useProgressStore.getState();
+
+                        const filteredData = data.filter(row => {
+                            const { hasPassedDiagnostic, activeSubject, activeTopic, activeChapter } = get();
+
+                            // Mastermind Override: If user manually picks a filter, show EVERYTHING in that filter.
+                            // This gives absolute control to the 'Mastermind'.
+                            if (activeSubject !== 'Mixed' || activeTopic || activeChapter) {
+                                return true;
+                            }
+
+                            // Diagnostic Bomb Rule: Skip ONLY IF they have mastered it (Repetitions > 2) 
+                            // and we have other cards to show.
+                            if (hasPassedDiagnostic && row.scaffold_level === 'Foundation') {
+                                const srs = row.ease_factor ? { repetitions: row.repetitions } : { repetitions: 0 };
+                                // If they've seen it 3 times correctly, then hide it. Else keep it.
+                                if (srs.repetitions > 2) return false;
+                            }
+
+                            // Invisible Scaffolding Engine Rule:
+                            // If IQ < 50 AND their overall accuracy is < 80%, lock them heavily into Foundation cards only.
+                            if (upscIQ > 0 && upscIQ < 50 && accuracy < 80) {
+                                return row.scaffold_level === 'Foundation';
+                            }
+                            return true;
+                        });
+
+                        // Map DB columns to camelCase StudyCard interface
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        const mappedCards: StudyCard[] = filteredData.map((dbCard: any) => ({
+                            id: dbCard.id,
+                            type: dbCard.type as CardType,
+                            domain: (dbCard.domain as Domain) || Domain.GS,
+                            subject: (dbCard.subject as Subject) || Subject.POLITY,
+                            topic: dbCard.topic,
+                            subTopic: dbCard.sub_topic,
+                            difficulty: (dbCard.difficulty as Difficulty) || Difficulty.MEDIUM,
+                            examTags: dbCard.exam_tags || [],
+                            status: dbCard.status as CardStatus,
+                            front: dbCard.front,
+                            back: dbCard.back,
+                            explanation: dbCard.explanation || undefined,
+                            topperTrick: dbCard.topper_trick || undefined,
+                            eliminationTrick: dbCard.elimination_trick || undefined,
+                            mainsPoint: dbCard.mains_point || undefined,
+                            syllabusTopic: dbCard.syllabus_topic || undefined,
+                            crossRefs: dbCard.cross_refs || undefined,
+                            isPyqTagged: dbCard.is_pyq_tagged || false,
+                            pyqYears: dbCard.pyq_years || undefined,
+                            currentAffairs: dbCard.current_affairs || undefined,
+                            priorityScore: dbCard.priority_score ?? 5,
+                            isVerified: dbCard.is_verified || false,
+                            options: (() => {
+                                const raw = dbCard.options;
+                                if (!raw) return undefined;
+                                if (Array.isArray(raw)) return raw;
+                                if (typeof raw === 'string') { try { return JSON.parse(raw); } catch { return undefined; } }
+                                return undefined;
+                            })(),
+                            year: dbCard.year,
+                            examName: dbCard.exam_name,
+                            sourcePdf: dbCard.source_pdf,
+                            scaffoldLevel: dbCard.scaffold_level || 'Foundation',
+                            customAnalogy: dbCard.custom_analogy || undefined,
+                            srs: {
+                                easeFactor: Number(dbCard.ease_factor) || 2.5,
+                                interval: Number(dbCard.interval) || 0,
+                                repetitions: Number(dbCard.repetitions) || 0,
+                                nextReviewDate: dbCard.next_review_date,
+                                lastReviewDate: dbCard.last_review_date,
+                            },
+                            createdAt: dbCard.created_at,
+                            updatedAt: dbCard.updated_at,
+                        }));
+                        // Weightage Engine Setup (Sort by priority * SRS need)
+                        const now = new Date();
+                        const nowMs = now.getTime();
+                        const currentHour = now.getHours();
+                        // Assume peak focus is 8 AM to 12 PM (can be expanded to pull from profile later)
+                        const isPeakFocus = currentHour >= 8 && currentHour < 12;
+
+                        // The Death Zone (Auto-Archive)
+                        // If a card interval > 60 days, it is permanently retired (until explicit full mock test)
+                        const aliveCards = mappedCards.filter(c => c.srs.interval <= 60);
+
+                        aliveCards.sort((a, b) => {
+                            // Base urgency (if interval is 0, it's highly urgent. If they're due, urgent)
+                            const aDue = new Date(a.srs.nextReviewDate || a.createdAt).getTime() - nowMs;
+                            const bDue = new Date(b.srs.nextReviewDate || b.createdAt).getTime() - nowMs;
+
+                            // Invisible Intelligence Multiplier: Priority Score gives up to 1.5x boost
+                            let aWeight = 1 + ((a.priorityScore || 5) / 10) * 0.5;
+                            let bWeight = 1 + ((b.priorityScore || 5) / 10) * 0.5;
+
+                            // Circadian Rhythm Optimizer: Boost HARD during peak, EASY/Mnemonic heavily during non-peak
+                            if (isPeakFocus) {
+                                if (a.difficulty === Difficulty.HARD) aWeight *= 1.2;
+                                if (b.difficulty === Difficulty.HARD) bWeight *= 1.2;
+                            } else {
+                                if (a.difficulty === Difficulty.EASY || a.topperTrick) aWeight *= 1.2;
+                                if (b.difficulty === Difficulty.EASY || b.topperTrick) bWeight *= 1.2;
+                            }
+
+                            // Lower score = more urgent. We boost (reduce) due time by the weight multiplier.
+                            const aScore = aDue / aWeight;
+                            const bScore = bDue / bWeight;
+
+                            return aScore - bScore;
+                        });
+
+                        // Top 20% Lethality Filter (Volume Control)
+                        // If in Mastermind Mode (manual filter) or deck is small, be more lenient.
+                        const { activeSubject, activeTopic, activeChapter } = get();
+                        const isMastermindMode = activeSubject !== 'Mixed' || activeTopic || activeChapter;
+
+                        let finalFeed: StudyCard[] = [];
+
+                        if (isMastermindMode) {
+                            finalFeed = aliveCards.slice(0, 50); // Just give them everything they filtered for
+                        } else {
+                            // THE SNIPER FEED INTERLEAVING (30% PYQ : 40% Predicted : 30% CA)
+                            const pyqs = aliveCards.filter(c => c.type === CardType.PYQ);
+                            const predicted = aliveCards.filter(c => (c.oracleConfidence || 0) > 80);
+                            const currentAffairs = aliveCards.filter(c => c.subject === Subject.CURRENT_AFFAIRS);
+                            const others = aliveCards.filter(c => c.type !== CardType.PYQ && (c.oracleConfidence || 0) <= 80 && c.subject !== Subject.CURRENT_AFFAIRS);
+
+                            const targetCount = 20; // Target daily batch size
+                            const counts = {
+                                pyq: Math.ceil(targetCount * 0.3),
+                                pred: Math.ceil(targetCount * 0.4),
+                                ca: Math.ceil(targetCount * 0.3)
+                            };
+
+                            // Interleave
+                            const slicePYQ = pyqs.slice(0, counts.pyq);
+                            const slicePred = predicted.slice(0, counts.pred);
+                            const sliceCA = currentAffairs.slice(0, counts.ca);
+
+                            finalFeed = [...slicePYQ, ...slicePred, ...sliceCA];
+
+                            // Fill remaining slots if any group is empty
+                            if (finalFeed.length < targetCount) {
+                                const remaining = others.slice(0, targetCount - finalFeed.length);
+                                finalFeed = [...finalFeed, ...remaining];
+                            }
+
+                            // Final shuffle of the interleaved batch to prevent grouping
+                            finalFeed.sort(() => Math.random() - 0.5);
+                        }
+
+                        // Discovery Engine (Unique values for filters)
+                        const subjects = Array.from(new Set(data.map(c => c.subject as Subject)));
+                        const topics = Array.from(new Set(data.map(c => c.topic).filter(Boolean)));
+                        const chapters = Array.from(new Set(data.map(c => c.sub_topic).filter(Boolean)));
+
+                        set({
+                            cards: finalFeed,
+                            isLoading: false,
+                            currentIndex: 0,
+                            availableFilters: { subjects, topics, chapters }
+                        });
+                    } else {
+                        set({ cards: [], isLoading: false, currentIndex: 0 });
+                    }
+                } catch (err) {
+                    console.error('[SRSStore] Fetch Error:', err);
+                    set({ isLoading: false });
+                }
+            },
+
+            fetchMoreCards: async () => {
+                const { cards: currentCards, activeSubject, activeTopic, activeChapter } = get();
+                if (currentCards.length > 100) return; // Cap at 100 for performance
+
+                try {
+                    let query = supabase
+                        .from('cards')
+                        .select('*')
+                        .eq('status', CardStatus.LIVE);
+
+                    if (activeSubject !== 'Mixed') query = query.eq('subject', activeSubject);
+                    if (activeTopic) query = query.eq('topic', activeTopic);
+                    if (activeChapter) query = query.eq('sub_topic', activeChapter);
+
+                    const { data, error } = await query;
+                    if (error || !data) return;
+
+                    // Map and Filter out already loaded cards
+                    const existingIds = new Set(currentCards.map(c => c.id));
+                    const newCards = data.filter(d => !existingIds.has(d.id));
+
+                    if (newCards.length === 0) return;
+
+                    // Map to StudyCard type
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const mappedNew: StudyCard[] = newCards.map((dbCard: any) => ({
+                        id: dbCard.id,
+                        type: dbCard.type as CardType,
+                        domain: (dbCard.domain as Domain) || Domain.GS,
+                        subject: (dbCard.subject as Subject) || Subject.POLITY,
+                        topic: dbCard.topic,
+                        subTopic: dbCard.sub_topic,
+                        difficulty: (dbCard.difficulty as Difficulty) || Difficulty.MEDIUM,
+                        examTags: dbCard.exam_tags || [],
+                        status: dbCard.status as CardStatus,
+                        front: dbCard.front,
+                        back: dbCard.back,
+                        explanation: dbCard.explanation || undefined,
+                        topperTrick: dbCard.topper_trick || undefined,
+                        srs: {
+                            easeFactor: Number(dbCard.ease_factor) || 2.5,
+                            interval: Number(dbCard.interval) || 0,
+                            repetitions: Number(dbCard.repetitions) || 0,
+                            nextReviewDate: dbCard.next_review_date,
+                            lastReviewDate: dbCard.last_review_date,
+                        },
+                        createdAt: dbCard.created_at,
+                        updatedAt: dbCard.updated_at,
+                    }));
+
+                    // Pick a small batch and shuffle
+                    const batch = mappedNew.sort(() => Math.random() - 0.5).slice(0, 10);
+
+                    set((state) => ({
+                        cards: [...state.cards, ...batch]
+                    }));
+                } catch (err) {
+                    console.warn('[SRSStore] Infinite Fetch Failed', err);
+                }
+            },
+
+            submitReview: async (cardId: string, recalled: boolean, failureReason?: string, certaintyScore?: number, timeToAnswerMs?: number) => {
+                const quality = recalled
+                    ? ReviewQuality.CORRECT_HESITATION  // quality 4 for "Recalled"
+                    : ReviewQuality.BLACKOUT;           // quality 0 for "Forgot"
+
+                const { cards, reviewHistory, sessionStartMs, fastSwipeCount, burnoutEasyCardsRemaining, currentIndex, recentResults } = get();
+                const cardIndex = cards.findIndex((c) => c.id === cardId);
+                if (cardIndex === -1) return;
+
+                // Stoic Burnout Shield Logic
+                const newRecentResults = [...recentResults, recalled];
+                if (newRecentResults.length > 10) {
+                    newRecentResults.shift();
+                }
+
+                let newIsStoicIntervention = get().isStoicIntervention;
+                // If 70% forget rate over the last 10 cards, intervene
+                if (newRecentResults.length === 10) {
+                    const forgotCount = newRecentResults.filter(r => !r).length;
+                    if (forgotCount >= 7) {
+                        newIsStoicIntervention = true;
+                        newRecentResults.length = 0; // reset it
+                    }
+                }
+
+                // Cognitive Load Handler Logic
+                const now = Date.now();
+                const timeSpentMs = now - sessionStartMs;
+
+                let newBurnoutEasyCardsRemaining = burnoutEasyCardsRemaining > 0 ? burnoutEasyCardsRemaining - 1 : 0;
+
+                // If they spent less than 2.0 seconds reading a card, it's a "fast swipe"
+                const isFastSwipe = timeSpentMs < 2000;
+                const newFastSwipeCount = isFastSwipe ? fastSwipeCount + 1 : 0;
+
+                // Trigger burnout mode if they did 3 fast swipes in a row
+                const newBurnoutMode = newFastSwipeCount >= 3;
+
+                if (newBurnoutMode && newFastSwipeCount === 3) {
+                    // Activate intervention: 5 easy cards next
+                    newBurnoutEasyCardsRemaining = 5;
+                }
+
+                const card = cards[cardIndex];
+
                 // eslint-disable-next-line @typescript-eslint/no-require-imports
                 const { useProgressStore } = require('./progressStore');
-                const { upscIQ, accuracy } = useProgressStore.getState();
+                const upscIQ = useProgressStore.getState().upscIQ;
 
-                const filteredData = data.filter(row => {
-                    const { hasPassedDiagnostic, activeSubject, activeTopic, activeChapter } = get();
-
-                    // Mastermind Override: If user manually picks a filter, show EVERYTHING in that filter.
-                    // This gives absolute control to the 'Mastermind'.
-                    if (activeSubject !== 'Mixed' || activeTopic || activeChapter) {
-                        return true;
-                    }
-
-                    // Diagnostic Bomb Rule: Skip ONLY IF they have mastered it (Repetitions > 2) 
-                    // and we have other cards to show.
-                    if (hasPassedDiagnostic && row.scaffold_level === 'Foundation') {
-                        const srs = row.ease_factor ? { repetitions: row.repetitions } : { repetitions: 0 };
-                        // If they've seen it 3 times correctly, then hide it. Else keep it.
-                        if (srs.repetitions > 2) return false;
-                    }
-
-                    // Invisible Scaffolding Engine Rule:
-                    // If IQ < 50 AND their overall accuracy is < 80%, lock them heavily into Foundation cards only.
-                    if (upscIQ > 0 && upscIQ < 50 && accuracy < 80) {
-                        return row.scaffold_level === 'Foundation';
-                    }
-                    return true;
-                });
-
-                // Map DB columns to camelCase StudyCard interface
+                // Phase 18: Cognitive Tracking
+                // We evaluate hesitation time vs the baseline for this complexity
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const mappedCards: StudyCard[] = filteredData.map((dbCard: any) => ({
-                    id: dbCard.id,
-                    type: dbCard.type as CardType,
-                    domain: (dbCard.domain as Domain) || Domain.GS,
-                    subject: (dbCard.subject as Subject) || Subject.POLITY,
-                    topic: dbCard.topic,
-                    subTopic: dbCard.sub_topic,
-                    difficulty: (dbCard.difficulty as Difficulty) || Difficulty.MEDIUM,
-                    examTags: dbCard.exam_tags || [],
-                    status: dbCard.status as CardStatus,
-                    front: dbCard.front,
-                    back: dbCard.back,
-                    explanation: dbCard.explanation || undefined,
-                    topperTrick: dbCard.topper_trick || undefined,
-                    eliminationTrick: dbCard.elimination_trick || undefined,
-                    mainsPoint: dbCard.mains_point || undefined,
-                    syllabusTopic: dbCard.syllabus_topic || undefined,
-                    crossRefs: dbCard.cross_refs || undefined,
-                    isPyqTagged: dbCard.is_pyq_tagged || false,
-                    pyqYears: dbCard.pyq_years || undefined,
-                    currentAffairs: dbCard.current_affairs || undefined,
-                    priorityScore: dbCard.priority_score ?? 5,
-                    isVerified: dbCard.is_verified || false,
-                    options: (() => {
-                        const raw = dbCard.options;
-                        if (!raw) return undefined;
-                        if (Array.isArray(raw)) return raw;
-                        if (typeof raw === 'string') { try { return JSON.parse(raw); } catch { return undefined; } }
-                        return undefined;
-                    })(),
-                    year: dbCard.year,
-                    examName: dbCard.exam_name,
-                    sourcePdf: dbCard.source_pdf,
-                    scaffoldLevel: dbCard.scaffold_level || 'Foundation',
-                    customAnalogy: dbCard.custom_analogy || undefined,
-                    srs: {
-                        easeFactor: Number(dbCard.ease_factor) || 2.5,
-                        interval: Number(dbCard.interval) || 0,
-                        repetitions: Number(dbCard.repetitions) || 0,
-                        nextReviewDate: dbCard.next_review_date,
-                        lastReviewDate: dbCard.last_review_date,
-                    },
-                    createdAt: dbCard.created_at,
-                    updatedAt: dbCard.updated_at,
-                }));
-                // Weightage Engine Setup (Sort by priority * SRS need)
-                const now = new Date();
-                const nowMs = now.getTime();
-                const currentHour = now.getHours();
-                // Assume peak focus is 8 AM to 12 PM (can be expanded to pull from profile later)
-                const isPeakFocus = currentHour >= 8 && currentHour < 12;
+                const cognitiveMetrics = cognitiveEngine.evaluateHesitation(
+                    card.scaffoldLevel as any || 'Intermediate',
+                    quality
+                );
 
-                // The Death Zone (Auto-Archive)
-                // If a card interval > 60 days, it is permanently retired (until explicit full mock test)
-                const aliveCards = mappedCards.filter(c => c.srs.interval <= 60);
+                // Drain or restore stamina based on the outcome
+                staminaEngine.processReviewEvent(quality, cognitiveMetrics.isPseudoKnowledge);
+                const { msi } = staminaEngine.getCurrentStamina();
 
-                aliveCards.sort((a, b) => {
-                    // Base urgency (if interval is 0, it's highly urgent. If they're due, urgent)
-                    const aDue = new Date(a.srs.nextReviewDate || a.createdAt).getTime() - nowMs;
-                    const bDue = new Date(b.srs.nextReviewDate || b.createdAt).getTime() - nowMs;
+                const newSRS = calculateSM2(
+                    quality,
+                    card.srs,
+                    certaintyScore,
+                    upscIQ,
+                    card.scaffoldLevel,
+                    cognitiveMetrics.isPseudoKnowledge
+                );
 
-                    // Invisible Intelligence Multiplier: Priority Score gives up to 1.5x boost
-                    let aWeight = 1 + ((a.priorityScore || 5) / 10) * 0.5;
-                    let bWeight = 1 + ((b.priorityScore || 5) / 10) * 0.5;
+                const updatedCards = [...cards];
+                updatedCards[cardIndex] = {
+                    ...card,
+                    srs: newSRS,
+                    updatedAt: new Date().toISOString(),
+                };
 
-                    // Circadian Rhythm Optimizer: Boost HARD during peak, EASY/Mnemonic heavily during non-peak
-                    if (isPeakFocus) {
-                        if (a.difficulty === Difficulty.HARD) aWeight *= 1.2;
-                        if (b.difficulty === Difficulty.HARD) bWeight *= 1.2;
-                    } else {
-                        if (a.difficulty === Difficulty.EASY || a.topperTrick) aWeight *= 1.2;
-                        if (b.difficulty === Difficulty.EASY || b.topperTrick) bWeight *= 1.2;
+                const response: ReviewResponse = {
+                    cardId,
+                    quality,
+                    timestamp: new Date().toISOString(),
+                    failureReason,
+                    certaintyScore,
+                    timeToAnswerMs,
+                };
+
+                // Cognitive Load Easy Card Injection
+                if (newBurnoutEasyCardsRemaining === 5 && currentIndex < updatedCards.length - 1) {
+                    // Re-sort the upcoming queue to pull Easy / Mnemonic-heavy cards to the immediate next slots
+                    const consumed = updatedCards.slice(0, currentIndex + 1);
+                    const remaining = updatedCards.slice(currentIndex + 1);
+
+                    // Partition remaining into 'easy' and 'normal'
+                    const easyCards = [];
+                    const normalCards = [];
+                    for (const c of remaining) {
+                        if (c.difficulty === Difficulty.EASY || c.topperTrick || c.explanation) {
+                            easyCards.push(c);
+                        } else {
+                            normalCards.push(c);
+                        }
                     }
 
-                    // Lower score = more urgent. We boost (reduce) due time by the weight multiplier.
-                    const aScore = aDue / aWeight;
-                    const bScore = bDue / bWeight;
+                    // Splice up to 5 easy cards to the very front of the queue
+                    const injectedEasy = easyCards.splice(0, 5);
+                    const refixedQueue = [...injectedEasy, ...easyCards, ...normalCards];
 
-                    return aScore - bScore;
-                });
-
-                // Top 20% Lethality Filter (Volume Control)
-                // If in Mastermind Mode (manual filter) or deck is small, be more lenient.
-                const { activeSubject, activeTopic, activeChapter } = get();
-                const isMastermindMode = activeSubject !== 'Mixed' || activeTopic || activeChapter;
-
-                let finalFeed: StudyCard[] = [];
-
-                if (isMastermindMode) {
-                    finalFeed = aliveCards.slice(0, 50); // Just give them everything they filtered for
-                } else {
-                    // THE SNIPER FEED INTERLEAVING (30% PYQ : 40% Predicted : 30% CA)
-                    const pyqs = aliveCards.filter(c => c.type === CardType.PYQ);
-                    const predicted = aliveCards.filter(c => (c.oracleConfidence || 0) > 80);
-                    const currentAffairs = aliveCards.filter(c => c.subject === Subject.CURRENT_AFFAIRS);
-                    const others = aliveCards.filter(c => c.type !== CardType.PYQ && (c.oracleConfidence || 0) <= 80 && c.subject !== Subject.CURRENT_AFFAIRS);
-
-                    const targetCount = 20; // Target daily batch size
-                    const counts = {
-                        pyq: Math.ceil(targetCount * 0.3),
-                        pred: Math.ceil(targetCount * 0.4),
-                        ca: Math.ceil(targetCount * 0.3)
-                    };
-
-                    // Interleave
-                    const slicePYQ = pyqs.slice(0, counts.pyq);
-                    const slicePred = predicted.slice(0, counts.pred);
-                    const sliceCA = currentAffairs.slice(0, counts.ca);
-
-                    finalFeed = [...slicePYQ, ...slicePred, ...sliceCA];
-
-                    // Fill remaining slots if any group is empty
-                    if (finalFeed.length < targetCount) {
-                        const remaining = others.slice(0, targetCount - finalFeed.length);
-                        finalFeed = [...finalFeed, ...remaining];
-                    }
-
-                    // Final shuffle of the interleaved batch to prevent grouping
-                    finalFeed.sort(() => Math.random() - 0.5);
+                    updatedCards.splice(0, updatedCards.length, ...consumed, ...refixedQueue);
                 }
-
-                // Discovery Engine (Unique values for filters)
-                const subjects = Array.from(new Set(data.map(c => c.subject as Subject)));
-                const topics = Array.from(new Set(data.map(c => c.topic).filter(Boolean)));
-                const chapters = Array.from(new Set(data.map(c => c.sub_topic).filter(Boolean)));
 
                 set({
-                    cards: finalFeed,
-                    isLoading: false,
-                    currentIndex: 0,
-                    availableFilters: { subjects, topics, chapters }
+                    cards: updatedCards,
+                    reviewHistory: [...reviewHistory, response],
+                    sessionStartMs: now,          // Reset timer for the next card
+                    fastSwipeCount: newFastSwipeCount,
+                    isBurnoutMode: newBurnoutMode,
+                    burnoutEasyCardsRemaining: newBurnoutEasyCardsRemaining,
+                    recentResults: newRecentResults,
+                    isStoicIntervention: newIsStoicIntervention,
+                    msi,
+                    syncStatus: 'syncing',
                 });
-            } else {
-                // Fallback to MOCK_CARDS if DB has no live cards yet so screen isn't empty
-                set({ cards: [...MOCK_CARDS], isLoading: false, currentIndex: 0 });
-            }
-        } catch (error) {
-            console.error('Error fetching live cards:', error);
-            set({ cards: [...MOCK_CARDS], isLoading: false, currentIndex: 0 });
-        }
-    },
 
-    submitReview: async (cardId: string, recalled: boolean, failureReason?: string, certaintyScore?: number, timeToAnswerMs?: number) => {
-        const quality = recalled
-            ? ReviewQuality.CORRECT_HESITATION  // quality 4 for "Recalled"
-            : ReviewQuality.BLACKOUT;           // quality 0 for "Forgot"
+                // Async Background Sync (Stripe/Linear Pattern)
+                try {
+                    const { error } = await supabase
+                        .from('cards')
+                        .update({
+                            ease_factor: newSRS.easeFactor,
+                            interval: newSRS.interval,
+                            repetitions: newSRS.repetitions,
+                            next_review_date: newSRS.nextReviewDate,
+                            last_review_date: newSRS.lastReviewDate,
+                        })
+                        .eq('id', cardId);
 
-        const { cards, reviewHistory, sessionStartMs, fastSwipeCount, burnoutEasyCardsRemaining, currentIndex, recentResults } = get();
-        const cardIndex = cards.findIndex((c) => c.id === cardId);
-        if (cardIndex === -1) return;
+                    if (error) throw error;
 
-        // Stoic Burnout Shield Logic
-        const newRecentResults = [...recentResults, recalled];
-        if (newRecentResults.length > 10) {
-            newRecentResults.shift();
-        }
+                    // ─── Insert Review History (Audit Trail) ───
+                    const { data: { user } } = await supabase.auth.getUser();
+                    if (user) {
+                        await supabase
+                            .from('review_history')
+                            .insert({
+                                user_id: user.id,
+                                card_id: cardId,
+                                quality,
+                                recalled,
+                                failure_reason: failureReason || null,
+                                certainty_score: certaintyScore || null,
+                                time_to_answer_ms: timeToAnswerMs || null,
+                                ease_factor: newSRS.easeFactor,
+                                interval: newSRS.interval,
+                                repetitions: newSRS.repetitions,
+                            });
+                    }
 
-        let newIsStoicIntervention = get().isStoicIntervention;
-        // If 70% forget rate over the last 10 cards, intervene
-        if (newRecentResults.length === 10) {
-            const forgotCount = newRecentResults.filter(r => !r).length;
-            if (forgotCount >= 7) {
-                newIsStoicIntervention = true;
-                newRecentResults.length = 0; // reset it
-            }
-        }
-
-        // Cognitive Load Handler Logic
-        const now = Date.now();
-        const timeSpentMs = now - sessionStartMs;
-
-        let newBurnoutEasyCardsRemaining = burnoutEasyCardsRemaining > 0 ? burnoutEasyCardsRemaining - 1 : 0;
-
-        // If they spent less than 2.0 seconds reading a card, it's a "fast swipe"
-        const isFastSwipe = timeSpentMs < 2000;
-        const newFastSwipeCount = isFastSwipe ? fastSwipeCount + 1 : 0;
-
-        // Trigger burnout mode if they did 3 fast swipes in a row
-        const newBurnoutMode = newFastSwipeCount >= 3;
-
-        if (newBurnoutMode && newFastSwipeCount === 3) {
-            // Activate intervention: 5 easy cards next
-            newBurnoutEasyCardsRemaining = 5;
-        }
-
-        const card = cards[cardIndex];
-
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
-        const { useProgressStore } = require('./progressStore');
-        const upscIQ = useProgressStore.getState().upscIQ;
-
-        // Phase 18: Cognitive Tracking
-        // We evaluate hesitation time vs the baseline for this complexity
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const cognitiveMetrics = cognitiveEngine.evaluateHesitation(
-            card.scaffoldLevel as any || 'Intermediate',
-            quality
-        );
-
-        // Drain or restore stamina based on the outcome
-        staminaEngine.processReviewEvent(quality, cognitiveMetrics.isPseudoKnowledge);
-        const { msi } = staminaEngine.getCurrentStamina();
-
-        const newSRS = calculateSM2(
-            quality,
-            card.srs,
-            certaintyScore,
-            upscIQ,
-            card.scaffoldLevel,
-            cognitiveMetrics.isPseudoKnowledge
-        );
-
-        const updatedCards = [...cards];
-        updatedCards[cardIndex] = {
-            ...card,
-            srs: newSRS,
-            updatedAt: new Date().toISOString(),
-        };
-
-        const response: ReviewResponse = {
-            cardId,
-            quality,
-            timestamp: new Date().toISOString(),
-            failureReason,
-            certaintyScore,
-            timeToAnswerMs,
-        };
-
-        // Cognitive Load Easy Card Injection
-        if (newBurnoutEasyCardsRemaining === 5 && currentIndex < updatedCards.length - 1) {
-            // Re-sort the upcoming queue to pull Easy / Mnemonic-heavy cards to the immediate next slots
-            const consumed = updatedCards.slice(0, currentIndex + 1);
-            const remaining = updatedCards.slice(currentIndex + 1);
-
-            // Partition remaining into 'easy' and 'normal'
-            const easyCards = [];
-            const normalCards = [];
-            for (const c of remaining) {
-                if (c.difficulty === Difficulty.EASY || c.topperTrick || c.explanation) {
-                    easyCards.push(c);
-                } else {
-                    normalCards.push(c);
+                    set({ syncStatus: 'synced' });
+                } catch (err) {
+                    console.error('Sync failed:', err);
+                    set({ syncStatus: 'error' });
                 }
-            }
+            },
 
-            // Splice up to 5 easy cards to the very front of the queue
-            const injectedEasy = easyCards.splice(0, 5);
-            const refixedQueue = [...injectedEasy, ...easyCards, ...normalCards];
+            nextCard: () => {
+                const { currentIndex, cards } = get();
+                if (currentIndex < cards.length - 1) {
+                    set({ currentIndex: currentIndex + 1 });
+                }
+            },
 
-            updatedCards.splice(0, updatedCards.length, ...consumed, ...refixedQueue);
+            previousCard: () => {
+                const { currentIndex } = get();
+                if (currentIndex > 0) {
+                    set({ currentIndex: currentIndex - 1 });
+                }
+            },
+
+            setCurrentIndex: (index: number) => set({ currentIndex: index, sessionStartMs: Date.now() }),
+
+            resetDeck: () => {
+                const { fetchLiveCards } = get();
+                fetchLiveCards();
+            },
+
+            resetBurnout: () => set({ isBurnoutMode: false, fastSwipeCount: 0, sessionStartMs: Date.now(), burnoutEasyCardsRemaining: 0 }),
+            dismissStoicIntervention: () => set({ isStoicIntervention: false, sessionStartMs: Date.now() }),
+            triggerFeedScroll: () => set((state) => ({ feedScrollTrigger: state.feedScrollTrigger + 1 }))
+        }),
+        {
+            name: 'journey-srs-storage',
+            storage: createJSONStorage(() => localStorage),
+            partialize: (state) => ({
+                needsDiagnostic: state.needsDiagnostic,
+                hasPassedDiagnostic: state.hasPassedDiagnostic,
+                activeSubject: state.activeSubject,
+                activeTopic: state.activeTopic,
+                activeChapter: state.activeChapter,
+                isListenMode: state.isListenMode,
+            }),
         }
-
-        set({
-            cards: updatedCards,
-            reviewHistory: [...reviewHistory, response],
-            sessionStartMs: now,          // Reset timer for the next card
-            fastSwipeCount: newFastSwipeCount,
-            isBurnoutMode: newBurnoutMode,
-            burnoutEasyCardsRemaining: newBurnoutEasyCardsRemaining,
-            recentResults: newRecentResults,
-            isStoicIntervention: newIsStoicIntervention,
-            msi,
-            syncStatus: 'syncing',
-        });
-
-        // Async Background Sync (Stripe/Linear Pattern)
-        try {
-            const { error } = await supabase
-                .from('cards')
-                .update({
-                    ease_factor: newSRS.easeFactor,
-                    interval: newSRS.interval,
-                    repetitions: newSRS.repetitions,
-                    next_review_date: newSRS.nextReviewDate,
-                    last_review_date: newSRS.lastReviewDate,
-                })
-                .eq('id', cardId);
-
-            if (error) throw error;
-
-            // ─── Insert Review History (Audit Trail) ───
-            const { data: { user } } = await supabase.auth.getUser();
-            if (user) {
-                await supabase
-                    .from('review_history')
-                    .insert({
-                        user_id: user.id,
-                        card_id: cardId,
-                        quality,
-                        recalled,
-                        failure_reason: failureReason || null,
-                        certainty_score: certaintyScore || null,
-                        time_to_answer_ms: timeToAnswerMs || null,
-                        ease_factor: newSRS.easeFactor,
-                        interval: newSRS.interval,
-                        repetitions: newSRS.repetitions,
-                    });
-            }
-
-            set({ syncStatus: 'synced' });
-        } catch (err) {
-            console.error('Sync failed:', err);
-            set({ syncStatus: 'error' });
-        }
-    },
-
-    nextCard: () => {
-        const { currentIndex, cards } = get();
-        if (currentIndex < cards.length - 1) {
-            set({ currentIndex: currentIndex + 1 });
-        }
-    },
-
-    previousCard: () => {
-        const { currentIndex } = get();
-        if (currentIndex > 0) {
-            set({ currentIndex: currentIndex - 1 });
-        }
-    },
-
-    setCurrentIndex: (index: number) => set({ currentIndex: index, sessionStartMs: Date.now() }),
-
-    resetDeck: () => {
-        const { fetchLiveCards } = get();
-        fetchLiveCards();
-    },
-
-    resetBurnout: () => set({ isBurnoutMode: false, fastSwipeCount: 0, sessionStartMs: Date.now(), burnoutEasyCardsRemaining: 0 }),
-    dismissStoicIntervention: () => set({ isStoicIntervention: false, sessionStartMs: Date.now() })
-}));
+    )
+);

@@ -126,33 +126,28 @@ function repairTruncatedJSON(raw: string): unknown[] | null {
 
 // ─── Card Extraction ────────────────────────────────────────
 
-const EXTRACTION_PROMPT = `Bhai Gemini, tu content bht bulky de raha hai. Use 'Atomic' banao.
+const EXTRACTION_PROMPT = `Bhai Gemini, cards abhi bohot heavy hain. Inhe 'Addictive & Snackable' banana hai.
 TASK: Extract high-yield learning cards from the text below.
 
-STRICT RULES:
-1. Atomicity: Ek card mein srf EK hi fact ya EK hi concept hona chahiye. Agar topic bada hai, toh use 5 alag-alag cards mein divide karo.
-2. Brevity: The "back" (answer) MUST NOT exceed 30 words. Break complex sentences. Goal: User ko card 5 second mein samajh aa jana chahiye.
-3. Handwriting Optimization: Agar Notes handwritten lgh rhe ho toh sirf KEY POINTS extract karo, detail mein mat jao taaki token limit cross na ho.
-4. Formatting: "back" field MUST be in bullet points ALWAYS. Use **Bold keywords** heavily.
-5. Hierarchy & Fields:
-   - "back": Main Answer sabse upar (Direct & Short).
-   - "topperTrick" (Mnemonic): Ek line ki trick.
-   - "explanation" (Logic): Ek line ka explanation 'Kyun'.
-   - "mainsPoint" (Mains Link): Ek keyword context ke liye.
-6. Create 5 to 8 cards maximum. Mix of FLASHCARD, MCQ, and PYQ-style cards.
-7. MCQs: exactly 4 options (a,b,c,d), 1 correct. Distractors must be UPSC-level tricky.
-8. Difficulty: mostly MEDIUM and HARD. Keep the "front" (question) crisp and clear (1-3 sentences).
-9. "eliminationTrick": Topper's smart MCQ guessing or elimination strategy. Max 1 line.
+STRICT ATOMIC RULES:
+1. THE 20-WORD LIMIT: "front" (question) aur "back" (answer) dono MAX 15-20 words ke hone chahiye. Zyada detail "explanation" ya "mainsPoint" mein dalo.
+2. TOPPER TONE: Boring academic language hatao. Tone 'Conversational' rakho—jaise ek AIR 1 topper apne dost ko short mein 'Pro-Tip' de raha ho. 
+3. SNACKABLE FORMATting: "back" field MUST be extremely crisp. Use **Bold keywords** heavily. 
+
+DETAILS:
+4. Atomicity: EK card = EK simple fact. Complex concepts ko 3-4 cards mein tod do.
+5. Create 5 to 7 cards maximum. Mix of FLASHCARD, MCQ, and PYQ-style cards.
+6. MCQs: exactly 4 options, 1 correct. Options should be "Clean" and direct.
+7. Use emojis (📍🚀🧠🛡️) to make it visually addictive.
+8. Identify specific "subTopic" for each card.
+` + `9. "eliminationTrick": Topper's smart MCQ guessing or elimination strategy. Max 1 line.
 10. "logicDerivation": Detailed analytical derivation (optional). Max 1 line.
 11. "crossRefs": CRITICAL: List 2-3 connections to OTHER unrelated subjects.
 12. "isPyqTagged": True/false if asked in UPSC CSE/HAS in last 10 years.
 13. "pyqYears": If isPyqTagged is true, list the exam and year(s).
 14. "currentAffairs": 1-line connection if in news recently.
 15. "priorityScore": Assign an integer from 1 to 10 based on exam weightage.
-16. Use emojis (📍🛡️🧠⚖️📜🏛️) to make content memorable.
-17. Identify specific "subTopic" for each card.
-18. "options" field is ONLY for MCQ type. Omit for FLASHCARD and PYQ.
-
+16. "options" field is ONLY for MCQ type. Omit for FLASHCARD and PYQ.
 Return ONLY valid JSON matching the schema.`;
 
 export async function extractCardsFromText(

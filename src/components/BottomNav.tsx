@@ -8,16 +8,17 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
+import { useSRSStore } from '@/store/srsStore';
 
 const NAV_ITEMS = [
     { href: '/', label: 'Feed', icon: '⚡', activeIcon: '⚡' },
-    { href: '/mains', label: 'Write', icon: '✍️', activeIcon: '📝' },
     { href: '/library', label: 'Vault', icon: '📂', activeIcon: '📁' },
     { href: '/dashboard', label: 'Profile', icon: '👤', activeIcon: '🎯' },
 ];
 
 export default function BottomNav() {
     const pathname = usePathname();
+    const { triggerFeedScroll } = useSRSStore();
 
     // Don't show on admin pages (they have their own nav)
     if (pathname.startsWith('/admin')) return null;
@@ -38,10 +39,19 @@ export default function BottomNav() {
                                 key={item.href}
                                 href={item.href}
                                 className="relative flex flex-col items-center justify-center gap-0.5 w-16 py-1"
+                                onClick={(e) => {
+                                    if (item.href === '/' && pathname === '/') {
+                                        e.preventDefault();
+                                        triggerFeedScroll();
+                                    }
+                                }}
                             >
-                                <span className="text-xl transition-transform duration-200">
+                                <motion.span
+                                    animate={isActive ? { scale: 1.2, filter: 'drop-shadow(0 0 8px rgba(255,255,255,0.4))' } : { scale: 1 }}
+                                    className="text-xl transition-all duration-300"
+                                >
                                     {isActive ? item.activeIcon : item.icon}
-                                </span>
+                                </motion.span>
                                 <span
                                     className={`text-[10px] font-semibold tracking-wider transition-colors duration-200 ${isActive ? 'text-white' : 'text-white/30'
                                         }`}

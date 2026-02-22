@@ -15,6 +15,7 @@ import { askLiveAI } from '@/app/actions/askAI';
 import SuggestEditModal from './SuggestEditModal';
 import { toast } from 'sonner';
 import { calculateLethalityScore, getLethalityBreakdown } from '@/lib/oracle/lethalityEngine';
+import { triggerHaptic } from '@/lib/haptics';
 
 interface StudyCardProps {
     card: StudyCardType;
@@ -25,9 +26,15 @@ interface StudyCardProps {
 
 // Adaptive text sizing for central focus (Bespoke Apple-style Typography)
 function questionSize(text: string) {
-    if (text.length > 250) return 'text-[22px] sm:text-[26px] leading-[1.4] tracking-[-0.01em] font-medium';
-    if (text.length > 120) return 'text-[28px] sm:text-[34px] leading-[1.25] tracking-[-0.02em] font-semibold';
-    return 'text-[36px] sm:text-[44px] leading-[1.15] font-black tracking-[-0.03em]';
+    if (text.length > 250) return 'text-[22px] sm:text-[26px] leading-[1.3] tracking-tight font-medium';
+    if (text.length > 120) return 'text-[28px] sm:text-[32px] leading-[1.2] tracking-tight font-bold';
+    return 'text-[36px] sm:text-[42px] leading-[1.1] font-black tracking-tight drop-shadow-sm';
+}
+
+function truncateWords(text: string, limit: number = 20) {
+    const words = text.split(/\s+/);
+    if (words.length <= limit) return { text, isTruncated: false };
+    return { text: words.slice(0, limit).join(' ') + '...', isTruncated: true };
 }
 
 function answerSize(text: string) {
@@ -37,22 +44,21 @@ function answerSize(text: string) {
 }
 
 export default function StudyCard({ card, isActive, isRapidFire, onAnswered }: StudyCardProps) {
-    const [isFlipped, setIsFlipped] = useState(false);
     const [selectedOption, setSelectedOption] = useState<string | null>(null);
     const [hasAnswered, setHasAnswered] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
     const [showDoubtChat, setShowDoubtChat] = useState(false);
-    const [showDeepDive, setShowDeepDive] = useState(false);
+    const [showAnswer, setShowAnswer] = useState(false); // Replacing isFlipped for accordion
     const [doubtQuestion, setDoubtQuestion] = useState('');
     const [aiResponse, setAiResponse] = useState('');
     const [isAskingAI, setIsAskingAI] = useState(false);
 
     // Micro-Engines
-    const [certainty, setCertainty] = useState<number>(3); // 1 = Low, 5 = High
+    const [certainty, setCertainty] = useState<number>(3);
     const [showRootCause, setShowRootCause] = useState(false);
     const [startTime, setStartTime] = useState<number>(Date.now());
     const [timeTakenMs, setTimeTakenMs] = useState<number | null>(null);
-    const [timeLeft, setTimeLeft] = useState<number>(7); // Rapid Fire 7s timer
+    const [timeLeft, setTimeLeft] = useState<number>(7);
 
     const submitReview = useSRSStore((s) => s.submitReview);
     const recordAnswer = useProgressStore((s) => s.recordAnswer);
@@ -86,12 +92,11 @@ export default function StudyCard({ card, isActive, isRapidFire, onAnswered }: S
 
     useEffect(() => {
         setTimeTakenMs(null);
-        setIsFlipped(false);
         setHasAnswered(false);
         setSelectedOption(null);
         setShowRootCause(false);
         setShowDoubtChat(false);
-        setShowDeepDive(false);
+        setShowAnswer(false);
         setAiResponse('');
     }, [card.id]);
 
@@ -99,11 +104,11 @@ export default function StudyCard({ card, isActive, isRapidFire, onAnswered }: S
         let timer: NodeJS.Timeout;
         const speedRequired = isRapidFire || isMicroAmbush;
 
-        if (isActive && speedRequired && !isFlipped && !hasAnswered && timeLeft > 0) {
+        if (isActive && speedRequired && !hasAnswered && timeLeft > 0) {
             timer = setTimeout(() => {
                 setTimeLeft(prev => prev - 1);
             }, 1000);
-        } else if (isActive && speedRequired && !isFlipped && !hasAnswered && timeLeft === 0) {
+        } else if (isActive && speedRequired && !hasAnswered && timeLeft === 0) {
             handleAction(false, '🌪️ Panic/Timeout');
         }
 
@@ -112,46 +117,43 @@ export default function StudyCard({ card, isActive, isRapidFire, onAnswered }: S
         }
 
         return () => clearTimeout(timer);
-    }, [isActive, isRapidFire, isFlipped, hasAnswered, timeLeft, isMicroAmbush]);
+    }, [isActive, isRapidFire, hasAnswered, timeLeft, isMicroAmbush]);
 
     // Phase 6: Keyboard Shortcuts (Unicorn UX)
     useEffect(() => {
         if (!isActive || showEditModal || showDoubtChat) return;
 
         const handleKeyDown = (e: KeyboardEvent) => {
-            // Space to Flip
+            // Space to Expand
             if (e.code === 'Space') {
                 e.preventDefault();
-                handleFlip();
+                setShowAnswer(!showAnswer);
             }
 
-            // 1-4 for MCQ Options
+            // ... MCQ logic stays ...
             if (card.type === CardType.MCQ && !hasAnswered) {
                 const num = parseInt(e.key);
                 if (num >= 1 && num <= (card.options?.length || 0)) {
                     handleMCQSelect(card.options![num - 1]);
-                    toast.success(`Speed Select: Option ${num}`, { icon: '⚡', duration: 1000 });
                 }
             }
 
-            // Enter/v for Recall, x/f for Forgot
-            if (isFlipped && !hasAnswered) {
+            // Enter/v for Recall
+            if (showAnswer && !hasAnswered) {
                 if (e.key === 'Enter' || e.key === 'v') {
                     handleAction(true);
-                    toast.success('Focused Recall +5 XP', { icon: '🧠', duration: 1000 });
                 }
                 if (e.key === 'x' || e.key === 'f') {
                     handleAction(false);
-                    toast.error('Synapse Gap Detected', { icon: '🌑', duration: 1000 });
                 }
             }
         };
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [isActive, isFlipped, hasAnswered, card, showEditModal, showDoubtChat]);
+    }, [isActive, hasAnswered, card, showEditModal, showDoubtChat, showAnswer]);
 
-    // Listen Mode Engine (Auto-Play & Auto-Swipe)
+    // Zero-Friction Listen Mode (Simplified for Reels)
     useEffect(() => {
         if (!isActive || !isListenMode || typeof window === 'undefined') {
             window.speechSynthesis?.cancel();
@@ -165,7 +167,6 @@ export default function StudyCard({ card, isActive, isRapidFire, onAnswered }: S
             const utterance = new SpeechSynthesisUtterance(text);
             utterance.rate = 1.05;
             utterance.pitch = 1.0;
-            // Try to find a good English voice
             const voices = synth.getVoices();
             const preferredVoice = voices.find(v => v.lang.includes('en-IN') || v.lang.includes('en-GB') || v.lang.includes('en-US'));
             if (preferredVoice) utterance.voice = preferredVoice;
@@ -174,70 +175,47 @@ export default function StudyCard({ card, isActive, isRapidFire, onAnswered }: S
             synth.speak(utterance);
         };
 
-        if (!isFlipped && !hasAnswered) {
-            // Read Front Card
+        if (!hasAnswered) {
             readText(card.front, () => {
-                // Wait 1.5 seconds after reading question, then flip
                 setTimeout(() => {
-                    setIsFlipped(true);
+                    setShowAnswer(true);
                 }, 1500);
             });
-        } else if (isFlipped && !hasAnswered) {
-            // Read Back Card
+        } else {
             let textToRead = card.back;
             if (card.customAnalogy) textToRead += ". Analogy: " + card.customAnalogy;
             if (card.topperTrick) textToRead += ". Trick to remember: " + card.topperTrick;
 
             readText(textToRead, () => {
-                // Wait 2.5 seconds after reading answer, then auto-mark correct and swipe next
                 setTimeout(() => {
-                    if (card.type === CardType.MCQ) {
-                        const correctOpt = card.options?.find(o => o.isCorrect);
-                        if (correctOpt) handleMCQSelect(correctOpt);
-                    } else {
-                        handleAction(true); // Default to 'Recalled' in passive mode
-                    }
-                }, 2500);
+                    if (onAnswered) onAnswered();
+                }, 3000);
             });
         }
 
         return () => {
             synth.cancel();
         };
-    }, [isActive, isListenMode, isFlipped, hasAnswered, card]);
+    }, [isActive, isListenMode, hasAnswered, card]);
 
 
 
-    const triggerHaptic = (success: boolean) => {
-        if (typeof window !== 'undefined' && 'vibrate' in navigator) {
-            try {
-                navigator.vibrate(success ? [30, 40, 30] : [150]);
-            } catch (e) { }
-        }
-    };
 
-    const handleFlip = () => {
-        if (card.type !== CardType.MCQ && !hasAnswered) {
-            setIsFlipped(!isFlipped);
-            if (!isFlipped) setStartTime(Date.now());
-        }
-    };
 
     const handleMCQSelect = (option: MCQOption) => {
         if (hasAnswered) return;
         const ttMs = Date.now() - startTime;
         setTimeTakenMs(ttMs);
-        triggerHaptic(option.isCorrect);
+        triggerHaptic(option.isCorrect ? 'success' : 'warning');
         setSelectedOption(option.id);
         setHasAnswered(true);
-        setIsFlipped(true);
+        setShowAnswer(true);
 
         submitReview(card.id, option.isCorrect, undefined, certainty, ttMs);
         recordAnswer(card.subject, option.isCorrect);
 
-        // Auto-scroll to next card after a short delay
         if (onAnswered) {
-            setTimeout(() => onAnswered(), 600);
+            setTimeout(() => onAnswered(), 1500);
         }
     };
 
@@ -245,15 +223,15 @@ export default function StudyCard({ card, isActive, isRapidFire, onAnswered }: S
         if (hasAnswered) return;
         const ttMs = Date.now() - startTime;
         setTimeTakenMs(ttMs);
-        triggerHaptic(recalled);
+        triggerHaptic(recalled ? 'success' : 'medium');
         setHasAnswered(true);
+        setShowAnswer(true);
 
         submitReview(card.id, recalled, failureReason, certainty, ttMs);
         recordAnswer(card.subject, recalled);
 
-        // Auto-scroll to next card after a short delay
-        if (onAnswered) {
-            setTimeout(() => onAnswered(), 600);
+        if (onAnswered && recalled) {
+            setTimeout(() => onAnswered(), 1200);
         }
     };
 
@@ -270,282 +248,236 @@ export default function StudyCard({ card, isActive, isRapidFire, onAnswered }: S
     }[card.type];
 
     return (
-        <div className="w-full h-screen snap-start snap-always relative flex items-center justify-center p-3 pb-[4.5rem] sm:p-6 sm:pb-[5.5rem]">
+        <div className={`w-full h-full relative overflow-hidden bg-black transition-all duration-300 ${showAnswer ? 'z-[200]' : 'z-10'}`}>
             <motion.div
-                className="relative w-full h-full max-h-[85vh] max-w-xl mx-auto rounded-[2rem] sm:rounded-[2.5rem] bg-[#0c0c11] border border-white/5 shadow-2xl overflow-hidden"
-                initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                animate={isActive ? { opacity: 1, scale: 1, y: 0 } : { opacity: 0.4, scale: 0.95, y: 20 }}
+                className={`relative w-full h-full mx-auto border-x shadow-2xl overflow-hidden transition-all duration-500 ${currentStreak >= 10 ? 'border-emerald-500/40 shadow-[0_0_25px_rgba(16,185,129,0.15)] animate-pulse-slow' : 'border-white/5'}`}
+                initial={{ opacity: 0, scale: 0.98 }}
+                animate={isActive ? { opacity: 1, scale: hasAnswered ? 0.99 : 1 } : { opacity: 0.4, scale: 0.98 }}
                 transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
             >
-                {/* Minimal Top Bar */}
-                <div className="absolute top-6 left-6 right-6 flex items-center justify-between z-50 pointer-events-none">
-                    <div className="flex flex-col gap-0.5">
-                        <span className="text-white/40 text-[10px] uppercase tracking-[0.2em] font-bold">{typeLabel}</span>
-                        <div className="flex items-center gap-1.5 opacity-60">
-                            <div className={`w-1.5 h-1.5 rounded-full ${difficultyAccent.dot}`} />
-                            <span className={`text-[10px] tracking-wider uppercase font-semibold ${difficultyAccent.text}`}>{card.difficulty}</span>
-                        </div>
-                    </div>
 
-                    <div className="flex gap-4 items-center pointer-events-auto">
-                        <button onClick={(e) => { e.stopPropagation(); setShowDoubtChat(true); setIsFlipped(true); }} className="text-white/40 hover:text-white transition-colors bg-white/5 p-2 rounded-full backdrop-blur-md">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
-                        </button>
-                        <button onClick={(e) => { e.stopPropagation(); setShowEditModal(true); }} className="text-white/40 hover:text-white transition-colors bg-white/5 p-2 rounded-full backdrop-blur-md">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg>
-                        </button>
-                    </div>
+                {/* Floating Action Menu (Right Side) - Minimalist 🔥 Oracle Link Only */}
+                <div className={`absolute right-6 top-1/2 -translate-y-1/2 flex flex-col gap-8 items-center z-50 pointer-events-auto transition-opacity duration-300 ${showAnswer ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+                    {card.oracleConfidence && (
+                        <motion.button
+                            onClick={(e) => { e.stopPropagation(); setShowAnswer(true); }}
+                            className="w-14 h-14 rounded-full bg-black/40 border border-[#00ffcc]/30 flex items-center justify-center backdrop-blur-md shadow-[0_0_30px_rgba(0,255,204,0.15)] relative overflow-hidden group"
+                            whileHover={{ scale: 1.1, rotate: 5 }}
+                            whileTap={{ scale: 0.9 }}
+                        >
+                            <div className="absolute inset-0 bg-[#00ffcc]/10 animate-pulse" />
+                            <span className="text-2xl drop-shadow-[0_0_10px_rgba(255,255,255,0.5)]">🔥</span>
+                        </motion.button>
+                    )}
                 </div>
 
                 {/* Rapid Fire Indicator */}
-                {isRapidFire && !isFlipped && !hasAnswered && (
-                    <div className="absolute top-0 left-0 right-0 h-1 bg-transparent z-50">
-                        <motion.div className="h-full bg-white/80" initial={{ width: '100%' }} animate={{ width: `${(timeLeft / 7) * 100}%` }} transition={{ duration: 1, ease: "linear" }} />
+                {isRapidFire && !hasAnswered && (
+                    <div className="absolute top-0 left-0 right-0 h-1.5 bg-white/5 z-50">
+                        <motion.div className="h-full bg-emerald-500" initial={{ width: '100%' }} animate={{ width: `${(timeLeft / 7) * 100}%` }} transition={{ duration: 1, ease: "linear" }} />
                     </div>
                 )}
 
-                {/* The Flipping Content */}
-                <motion.div
-                    className="relative w-full h-full perspective-1000 cursor-pointer"
-                    onClick={handleFlip}
-                    style={{ transformStyle: 'preserve-3d' }}
-                >
-                    {/* ═══════════ FRONT FACE ═══════════ */}
-                    <motion.div
-                        className="absolute inset-0 w-full h-full flex flex-col items-center justify-start px-6 py-20 sm:px-10 sm:py-24 bg-[#0c0c11] overflow-y-auto overflow-x-hidden"
-                        style={{ backfaceVisibility: 'hidden' }}
-                        animate={{ rotateY: isFlipped ? 180 : 0 }}
-                        transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }} // Apple-like spring/easing
-                    >
-                        <div className="flex-1 flex flex-col items-center justify-center w-full max-w-xl mx-auto my-auto min-h-0 shrink-0 relative mt-4">
-                            {/* Oracle Lethality Badge (Progressive Disclosure Hook) */}
-                            {card.oracleConfidence && (
-                                <motion.div
-                                    initial={{ opacity: 0, scale: 0.8 }}
+                {/* ═══════════ INSTAGRAM POST + CAPTION CONTENT ═══════════ */}
+                <div className="relative w-full h-full flex flex-col">
+                    {/* Top Context Bar (Premium Glass Badges) - Visible on Front Only */}
+                    <AnimatePresence>
+                        {!showAnswer && (
+                            <motion.div
+                                initial={{ opacity: 0, y: -20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -20 }}
+                                className="absolute top-12 inset-x-0 flex justify-center gap-3 z-50 px-6"
+                            >
+                                <div className="px-4 py-1.5 rounded-full bg-white/[0.05] backdrop-blur-2xl border border-white/10 flex items-center gap-2 shadow-2xl">
+                                    <span className={`w-1.5 h-1.5 rounded-full ${difficultyAccent.dot} animate-pulse`} />
+                                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/60">{card.subject}</span>
+                                </div>
+                                <div className="px-4 py-1.5 rounded-full bg-white/[0.05] backdrop-blur-2xl border border-white/10 flex items-center gap-2 shadow-2xl">
+                                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30">{card.topic}</span>
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+
+                    {/* Unified Scroll Area (Question + Interaction) */}
+                    <div className="flex-1 overflow-y-auto no-scrollbar relative">
+                        <div className="min-h-full flex flex-col items-center justify-center pt-24 pb-44 px-8 sm:px-12 gap-16">
+                            {/* 1. The Question */}
+                            <motion.div
+                                className="w-full"
+                                animate={{
+                                    opacity: showAnswer ? 0 : 1,
+                                    scale: showAnswer ? 0.95 : 1
+                                }}
+                                transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+                            >
+                                <motion.p
+                                    className={`${questionSize(card.front)} text-white text-balance text-center w-full drop-shadow-2xl mb-10`}
+                                    initial={{ opacity: 0, scale: 0.98 }}
                                     animate={{ opacity: 1, scale: 1 }}
-                                    className="absolute -top-12 sm:-top-16 left-2 sm:left-0 flex items-center gap-2 bg-[#111] border border-[#00ffcc]/30 px-3 py-1.5 rounded-full shadow-[0_0_15px_rgba(0,255,204,0.15)]"
+                                    transition={{ duration: 0.8, ease: "circOut" }}
                                 >
-                                    <span className="text-[#00ffcc] text-sm animate-pulse">🔥</span>
-                                    <span className="text-[#00ffcc] font-black tracking-widest text-[10px] sm:text-[11px] uppercase">
-                                        {card.oracleConfidence}% Lethality
-                                    </span>
-                                </motion.div>
-                            )}
+                                    {card.front}
+                                </motion.p>
+                            </motion.div>
 
-                            <p className={`${questionSize(card.front)} text-white text-balance text-left w-full mb-12 sm:mb-20 px-2 sm:px-0 mt-4`}>
-                                {card.front}
-                            </p>
-                        </div>
-
-                        {/* MCQ Options (Sleek List) */}
-                        {card.type === CardType.MCQ && Array.isArray(card.options) && card.options.length > 0 && (
-                            <div className="w-full max-w-xl mx-auto space-y-4 pb-24 shrink-0 px-2 sm:px-0">
-                                {card.options.map((opt) => {
-                                    let optClass = 'text-white/70 hover:text-white hover:bg-white/[0.04] border-white/5 bg-white/[0.02] shadow-sm';
-                                    if (hasAnswered) {
-                                        if (opt.isCorrect) optClass = 'text-emerald-400 border-emerald-500/30 bg-emerald-500/[0.08] shadow-[0_0_20px_rgba(16,185,129,0.1)] font-semibold';
-                                        else if (selectedOption === opt.id) optClass = 'text-white/40 line-through opacity-50 border-transparent bg-transparent';
-                                        else optClass = 'text-white/20 opacity-30 border-transparent bg-transparent';
-                                    }
-                                    return (
+                            {/* 2. Interaction Layer (MCQ Options) */}
+                            {card.type === CardType.MCQ && !hasAnswered && (
+                                <div className="w-full flex flex-col gap-3">
+                                    {card.options?.map((opt, i) => (
                                         <motion.button
                                             key={opt.id}
+                                            initial={{ opacity: 0, scale: 0.9, y: 10 }}
+                                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                                            transition={{ delay: i * 0.05, duration: 0.5, ease: "backOut" }}
                                             onClick={(e) => { e.stopPropagation(); handleMCQSelect(opt); }}
-                                            className={`w-full py-5 px-6 sm:px-8 rounded-[1.5rem] border transition-all duration-300 text-left text-[17px] sm:text-[19px] leading-relaxed tracking-tight ${optClass}`}
+                                            className={`group relative w-full py-4.5 px-6 rounded-2xl border transition-all duration-300 flex items-center gap-4 ${selectedOption === opt.id
+                                                ? (opt.isCorrect ? 'bg-emerald-500/20 border-emerald-500/50 shadow-[0_0_20px_rgba(16,185,129,0.2)]' : 'bg-rose-500/20 border-rose-500/50 shadow-[0_0_20px_rgba(244,63,94,0.2)]')
+                                                : 'bg-white/[0.03] border-white/10 hover:bg-white/[0.08] hover:border-white/20'
+                                                }`}
                                         >
-                                            {opt.text}
+                                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-black border transition-colors ${selectedOption === opt.id ? 'bg-white text-black border-transparent' : 'bg-black/40 text-white/40 border-white/10'}`}>
+                                                {String.fromCharCode(65 + i)}
+                                            </div>
+                                            <span className={`flex-1 text-left text-[14px] sm:text-[15px] font-bold leading-tight ${selectedOption === opt.id ? 'text-white' : 'text-white/70'}`}>
+                                                {opt.text}
+                                            </span>
                                         </motion.button>
-                                    );
-                                })}
-                            </div>
-                        )}
-                    </motion.div>
-
-                    {/* ═══════════ BACK FACE ═══════════ */}
-                    <motion.div
-                        className="absolute inset-0 w-full h-full flex flex-col items-center justify-start px-6 py-20 sm:px-10 sm:py-24 bg-[#0c0c11] overflow-y-auto overflow-x-hidden"
-                        style={{ backfaceVisibility: 'hidden', rotateY: 180 }}
-                        animate={{ rotateY: isFlipped ? 0 : -180 }}
-                        transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-                    >
-                        <div className="w-full max-w-xl flex flex-col justify-center my-auto pb-32 mx-auto min-h-0 shrink-0">
-                            <div className="text-white/90 text-left text-balance mb-12 px-2 sm:px-0">
-                                <ReactMarkdown
-                                    components={{
-                                        p: ({ children }) => <p className={`${answerSize(card.back)} mb-6 leading-[1.6]`}>{children}</p>,
-                                        ul: ({ children }) => <ul className="list-disc pl-6 mb-8 space-y-5 text-white/90 text-[20px] sm:text-[24px] leading-[1.6] marker:text-emerald-500">{children}</ul>,
-                                        li: ({ children }) => <li className="pl-2">{children}</li>,
-                                        strong: ({ children }) => <strong className="text-emerald-400 font-bold drop-shadow-[0_0_12px_rgba(52,211,153,0.3)]">{children}</strong>,
-                                    }}
-                                >
-                                    {card.back}
-                                </ReactMarkdown>
-                            </div>
-
-                            {/* Minimalist Add-ons (Progressive Disclosure) */}
-                            {(!showDeepDive && (card.firstPrinciples || card.explanation || card.mainsPoint || card.topperTrick || card.currentAffairs || card.trendEvolution)) && (
-                                <button
-                                    onClick={(e) => { e.stopPropagation(); setShowDeepDive(true); }}
-                                    className="mt-2 mx-auto w-max px-6 py-3 rounded-full border border-white/10 bg-white/5 text-white/70 hover:text-white hover:bg-white/10 transition-colors text-sm font-bold uppercase tracking-widest flex items-center gap-3 backdrop-blur-md"
-                                >
-                                    <span>Deep Dive</span>
-                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 9l6 6 6-6" /></svg>
-                                </button>
-                            )}
-
-                            {showDeepDive && (
-                                <motion.div
-                                    initial={{ opacity: 0, height: 0 }}
-                                    animate={{ opacity: 1, height: 'auto' }}
-                                    className="space-y-8 mt-4 border-t border-white/10 pt-8"
-                                >
-                                    {card.topperTrick && (
-                                        <div className="border-l-[3px] border-purple-500/40 pl-5 py-2">
-                                            <h4 className="text-purple-400 text-[10px] uppercase tracking-[0.25em] font-extrabold mb-2">Memory Trick</h4>
-                                            <p className="text-white/80 text-[16px] sm:text-[18px] leading-[1.6] tracking-tight">{card.topperTrick}</p>
-                                        </div>
-                                    )}
-                                    {card.mainsPoint && (
-                                        <div className="border-l-[3px] border-amber-500/40 pl-5 py-2">
-                                            <h4 className="text-amber-400 text-[10px] uppercase tracking-[0.25em] font-extrabold mb-2">Mains Context</h4>
-                                            <p className="text-white/80 text-[16px] sm:text-[18px] leading-[1.6] tracking-tight">{card.mainsPoint}</p>
-                                        </div>
-                                    )}
-                                    {card.firstPrinciples && (
-                                        <div className="border-l-[3px] border-white/10 pl-5 py-2">
-                                            <h4 className="text-[10px] text-white/40 uppercase tracking-[0.25em] font-extrabold mb-2">First Principles</h4>
-                                            <p className="text-white/70 text-[16px] sm:text-[18px] leading-[1.6] tracking-tight">{card.firstPrinciples}</p>
-                                        </div>
-                                    )}
-                                    {card.explanation && !card.firstPrinciples && (
-                                        <div className="border-l-[3px] border-blue-500/40 pl-5 py-2">
-                                            <h4 className="text-[10px] text-blue-400 uppercase tracking-[0.25em] font-extrabold mb-2">Logic / 'Kyun'</h4>
-                                            <p className="text-white/80 text-[16px] sm:text-[18px] leading-[1.6] tracking-tight">{card.explanation}</p>
-                                        </div>
-                                    )}
-                                    {/* Oracle Trend Evolution */}
-                                    {card.trendEvolution && !card.evolutionPath && (
-                                        <div className="border-l-[3px] border-[#00ffcc]/60 pl-5 py-2">
-                                            <h4 className="text-[#00ffcc] text-[10px] uppercase tracking-[0.25em] font-extrabold mb-2 flex items-center gap-2">
-                                                <span className="text-sm">👁️</span> The Oracle Insight {card.oracleConfidence ? `[${card.oracleConfidence}% CONFIDENCE]` : ''}
-                                            </h4>
-                                            {card.formatPrediction && (
-                                                <div className="text-[10px] bg-[#00ffcc]/10 text-[#00ffcc] px-2 py-0.5 rounded w-max mb-2 font-mono uppercase tracking-widest">{card.formatPrediction}</div>
-                                            )}
-                                            <p className="text-white/80 text-[16px] sm:text-[18px] leading-[1.6] tracking-tight font-mono text-sm">{card.trendEvolution}</p>
-                                        </div>
-                                    )}
-
-                                    {/* Oracle 2.0 Transparency (S.P.V / C.A Proof) */}
-                                    {(card.evolutionPath || card.triggerDna || card.staticPillarValue) && (
-                                        <div className="border border-[#00ffcc]/20 bg-[#00ffcc]/[0.02] rounded-2xl p-5 space-y-4">
-                                            <h4 className="text-[#00ffcc] text-[10px] uppercase tracking-[0.25em] font-extrabold mb-2 flex items-center gap-2">
-                                                <span className="text-sm">🔬</span> Oracle Logic Transparency
-                                            </h4>
-
-                                            {card.triggerDna && (
-                                                <div>
-                                                    <span className="text-[10px] text-white/30 uppercase tracking-widest font-bold">Trigger DNA</span>
-                                                    <p className="text-white/80 text-sm leading-relaxed mt-1">{card.triggerDna}</p>
-                                                </div>
-                                            )}
-
-                                            {card.evolutionPath && (
-                                                <div>
-                                                    <span className="text-[10px] text-white/30 uppercase tracking-widest font-bold">Evolution Path</span>
-                                                    <p className="text-white/60 text-[13px] leading-relaxed mt-1 font-mono">{card.evolutionPath}</p>
-                                                </div>
-                                            )}
-
-                                            {card.staticPillarValue !== undefined && (
-                                                <div className="pt-2 border-t border-white/5">
-                                                    <span className="text-[10px] text-fuchsia-400/80 uppercase tracking-widest font-bold">Mathematical Proof</span>
-                                                    <p className="text-[#00ffcc]/70 text-[12px] leading-relaxed mt-1 font-mono italic">
-                                                        {getLethalityBreakdown({
-                                                            spv: card.staticPillarValue || 0,
-                                                            ca: card.causalAnchor || 0,
-                                                            oe: card.optionEvolution || 0,
-                                                            xs: card.crossExamSignals || 0,
-                                                            gc: card.greyAreaComplexity || 0
-                                                        })}
-                                                    </p>
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
-                                    {/* Live Synapse */}
-                                    {card.currentAffairs && (
-                                        <div className="border-l-[3px] border-emerald-500/40 pl-5 py-2">
-                                            <h4 className="text-emerald-400 text-[10px] uppercase tracking-[0.25em] font-extrabold mb-2 flex items-center gap-2">
-                                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.8)]" /> Live Synapse
-                                            </h4>
-                                            <p className="text-emerald-50/80 text-[16px] sm:text-[18px] leading-[1.6] tracking-tight">{card.currentAffairs}</p>
-                                        </div>
-                                    )}
-                                </motion.div>
-                            )}
-
-                            {/* AI Chat block */}
-                            {showDoubtChat && (
-                                <div className="mt-8 pt-8 border-t border-white/10 w-full" onClick={e => e.stopPropagation()}>
-                                    <h4 className="text-[10px] text-white/40 uppercase tracking-[0.2em] font-bold mb-4">Oracle Mentor</h4>
-                                    {aiResponse ? (
-                                        <p className="text-white/90 text-sm leading-relaxed whitespace-pre-line">{aiResponse}</p>
-                                    ) : (
-                                        <div className="flex gap-3">
-                                            <input
-                                                type="text"
-                                                placeholder="Ask anything..."
-                                                value={doubtQuestion}
-                                                onChange={e => setDoubtQuestion(e.target.value)}
-                                                className="flex-1 bg-transparent border-b border-white/20 pb-2 text-lg text-white font-medium focus:outline-none focus:border-white transition-colors"
-                                                autoFocus
-                                            />
-                                            <button
-                                                onClick={async () => {
-                                                    if (!doubtQuestion) return;
-                                                    setIsAskingAI(true);
-                                                    const res = await askLiveAI(card.id, doubtQuestion);
-                                                    setAiResponse(res.error || res.answer);
-                                                    setIsAskingAI(false);
-                                                }}
-                                                disabled={isAskingAI}
-                                                className="text-white font-bold tracking-widest uppercase text-xs disabled:opacity-50"
-                                            >
-                                                {isAskingAI ? '...' : 'Send'}
-                                            </button>
-                                        </div>
-                                    )}
+                                    ))}
                                 </div>
                             )}
                         </div>
+                    </div>
 
-                        {/* Minimalist Bottom Action Bar */}
-                        {card.type !== CardType.MCQ && !hasAnswered && (
-                            <div className="absolute bottom-8 left-6 right-6 flex items-center justify-center gap-2 sm:gap-4 z-50">
-                                <button
-                                    onClick={(e) => { e.stopPropagation(); setShowRootCause(true); }}
-                                    className="w-14 h-14 rounded-full border border-white/10 bg-black/50 backdrop-blur-xl flex items-center justify-center text-white/50 hover:text-white hover:border-white/30 hover:bg-white/10 transition-all font-light text-xl"
-                                >
-                                    ✕
-                                </button>
-                                <button
-                                    onClick={(e) => { e.stopPropagation(); handleAction(true); }}
-                                    className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-white text-black flex items-center justify-center font-bold tracking-tight text-xl transition-transform hover:scale-105 active:scale-95"
-                                >
-                                    ✓
-                                </button>
-                            </div>
-                        )}
+                    {/* 3. The Caption (Expandable Answer Section) - Now Absolute to allow feed snapping */}
+                    <motion.div
+                        className="absolute bottom-0 inset-x-0 w-full bg-gradient-to-t from-black via-black/95 to-transparent pt-32 pb-8 px-6 z-40"
+                        initial={false}
+                        animate={{
+                            height: showAnswer ? '100.1%' : '140px', // Slight overfill to ensure clean cover
+                            maxHeight: showAnswer ? '100%' : '140px',
+                            backgroundColor: showAnswer ? 'rgba(0,0,0,0.98)' : 'rgba(0,0,0,0)'
+                        }}
+                        transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+                    >
+                        <div className="max-w-xl mx-auto flex flex-col h-full">
+                            <AnimatePresence mode="wait">
+                                {!showAnswer ? (
+                                    <motion.div
+                                        key="preview"
+                                        initial={{ opacity: 0 }}
+                                        animate={{ opacity: 1 }}
+                                        exit={{ opacity: 0 }}
+                                        className="flex flex-col gap-2"
+                                    >
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Sniper Intel</span>
+                                            <div className="flex-1 h-[1px] bg-white/5" />
+                                        </div>
+                                        <div className="flex items-start gap-2">
+                                            <p className="text-white/60 text-sm line-clamp-1 flex-1 font-medium">
+                                                {card.back.replace(/[#*]/g, '').slice(0, 100)}...
+                                            </p>
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); setShowAnswer(true); triggerHaptic('light'); }}
+                                                className="text-white/80 text-[11px] font-black uppercase tracking-wider hover:text-white transition-colors"
+                                            >
+                                                Learn More
+                                            </button>
+                                        </div>
+                                    </motion.div>
+                                ) : (
+                                    <motion.div
+                                        key="expanded"
+                                        initial={{ opacity: 0, y: 30 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, y: 30 }}
+                                        className="space-y-6 overflow-y-auto pr-2 no-scrollbar pb-32"
+                                    >
+                                        {/* Header / Collapse Button */}
+                                        <div className="flex items-center justify-between sticky top-0 bg-transparent py-2 z-10">
+                                            <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Master Intel</span>
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); setShowAnswer(false); }}
+                                                className="text-white/30 hover:text-white/60 p-1"
+                                            >
+                                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6" /></svg>
+                                            </button>
+                                        </div>
 
-                        {showRootCause && !hasAnswered && card.type !== CardType.MCQ && (
-                            <div className="absolute bottom-10 left-6 right-6 flex flex-col gap-3 max-w-xs mx-auto z-50">
-                                <button onClick={(e) => { e.stopPropagation(); handleAction(false, '🧠 Concept Gap'); }} className="w-full py-4 border border-white/20 rounded-full text-white text-sm font-semibold tracking-wide hover:bg-white/10 transition-colors bg-black/50 backdrop-blur-md">Concept Gap</button>
-                                <button onClick={(e) => { e.stopPropagation(); handleAction(false, '📝 Fact Slip'); }} className="w-full py-4 border border-white/20 rounded-full text-white text-sm font-semibold tracking-wide hover:bg-white/10 transition-colors bg-black/50 backdrop-blur-md">Fact Slip</button>
-                            </div>
-                        )}
+                                        {/* Structured Content Sections */}
+                                        <div className="space-y-8">
+                                            {/* Section 1: The Logic */}
+                                            <div className="space-y-3">
+                                                <h4 className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em] font-outfit">The Logic</h4>
+                                                <ReactMarkdown
+                                                    components={{
+                                                        p: ({ children }) => <p className="text-[18px] sm:text-[21px] font-bold text-white/90 leading-[1.6] tracking-tight">{children}</p>,
+                                                        strong: ({ children }) => <span className="text-emerald-400 font-black">{children}</span>,
+                                                    }}
+                                                >
+                                                    {card.back}
+                                                </ReactMarkdown>
+                                            </div>
+
+                                            {/* Section 2: The Trick (If exists) */}
+                                            {card.topperTrick && (
+                                                <div className="bg-purple-500/10 border border-purple-500/20 rounded-2xl p-4">
+                                                    <h4 className="text-[9px] font-black text-purple-400 uppercase tracking-widest mb-2">The Trick</h4>
+                                                    <p className="text-white/90 text-sm font-medium leading-relaxed italic">
+                                                        {card.topperTrick}
+                                                    </p>
+                                                </div>
+                                            )}
+
+                                            {/* Section 3: The Source */}
+                                            <div className="flex items-center justify-between border-t border-white/5 pt-4">
+                                                <div className="flex flex-col gap-0.5">
+                                                    <h4 className="text-[9px] font-black text-white/20 uppercase tracking-widest">The Source</h4>
+                                                    <span className="text-white/40 text-[10px] font-bold">{typeLabel} • {card.difficulty} • {card.subject} • {card.topic}</span>
+                                                </div>
+                                                {card.year && (
+                                                    <span className="px-2 py-0.5 rounded bg-white/5 border border-white/10 text-[9px] font-black text-white/30 uppercase tracking-widest">PYQ {card.year}</span>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* Bottom Actions for Review - Premium Glass Pills */}
+                                        {!hasAnswered && (
+                                            <div className="flex gap-4 pt-10">
+                                                <motion.button
+                                                    whileHover={{ backgroundColor: 'rgba(255,255,255,0.08)' }}
+                                                    whileTap={{ scale: 0.96 }}
+                                                    onClick={(e) => { e.stopPropagation(); handleAction(false); }}
+                                                    className="flex-1 py-4.5 rounded-2xl border border-white/10 bg-white/[0.04] backdrop-blur-xl text-[11px] font-black uppercase tracking-[0.25em] text-white/50 transition-all"
+                                                >
+                                                    Forgot
+                                                </motion.button>
+                                                <motion.button
+                                                    whileHover={{ scale: 1.02, backgroundColor: '#f0f0f0' }}
+                                                    whileTap={{ scale: 0.96 }}
+                                                    onClick={(e) => { e.stopPropagation(); handleAction(true); }}
+                                                    className="flex-1 py-4.5 rounded-2xl bg-white text-black text-[11px] font-black uppercase tracking-[0.25em] shadow-[0_15px_35px_rgba(255,255,255,0.25)] transition-all"
+                                                >
+                                                    Got It
+                                                </motion.button>
+                                            </div>
+                                        )}
+
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); setShowDoubtChat(true); }}
+                                            className="w-full py-5 rounded-3xl border border-white/[0.03] bg-gradient-to-b from-white/[0.02] to-transparent text-[10px] text-white/20 font-black uppercase tracking-[0.4em] hover:text-white/40 transition-all mt-4"
+                                        >
+                                            Ask Oracle IQ
+                                        </button>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </div>
                     </motion.div>
-                </motion.div>
+
+                </div>
             </motion.div>
 
             {showEditModal && (
