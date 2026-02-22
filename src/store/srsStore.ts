@@ -743,18 +743,23 @@ export const useSRSStore = create<SRSStore>((set, get) => ({
             if (error) throw error;
 
             // ─── Insert Review History (Audit Trail) ───
-            await supabase
-                .from('review_history')
-                .insert({
-                    card_id: cardId,
-                    quality,
-                    recalled,
-                    failure_reason: failureReason || null,
-                    certainty_score: certaintyScore || null,
-                    time_to_answer_ms: timeToAnswerMs || null,
-                    ease_factor: newSRS.easeFactor,
-                    interval_days: newSRS.interval,
-                });
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                await supabase
+                    .from('review_history')
+                    .insert({
+                        user_id: user.id,
+                        card_id: cardId,
+                        quality,
+                        recalled,
+                        failure_reason: failureReason || null,
+                        certainty_score: certaintyScore || null,
+                        time_to_answer_ms: timeToAnswerMs || null,
+                        ease_factor: newSRS.easeFactor,
+                        interval: newSRS.interval,
+                        repetitions: newSRS.repetitions,
+                    });
+            }
 
             set({ syncStatus: 'synced' });
         } catch (err) {
