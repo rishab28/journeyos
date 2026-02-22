@@ -6,7 +6,7 @@
 // ═══════════════════════════════════════════════════════════
 
 import { createServerSupabaseClient } from '@/lib/supabase/server';
-import { getGeminiClient, AIError } from '@/lib/ai/gemini';
+import { getGeminiClient, AIError, generateEmbedding } from '@/lib/ai/gemini';
 import { SchemaType } from '@google/generative-ai';
 
 interface BacktestResult {
@@ -104,7 +104,7 @@ export async function runOracleBacktestCycle(
 
         // Model configurations
         const genModel = genAI.getGenerativeModel({
-            model: 'gemini-1.5-flash',
+            model: 'gemini-2.5-flash',
             generationConfig: {
                 temperature: 0.7, // Higher temp for diverse independent sets
                 responseMimeType: 'application/json',
@@ -120,7 +120,7 @@ export async function runOracleBacktestCycle(
         });
 
         const valModel = genAI.getGenerativeModel({
-            model: 'gemini-1.5-flash',
+            model: 'gemini-2.5-flash',
             generationConfig: {
                 temperature: 0.1, // Low temp for rigorous validation
                 responseMimeType: 'application/json',
@@ -156,7 +156,7 @@ export async function runOracleBacktestCycle(
         const predictionSetsMadeForThisYear = currentCal?.prediction_sets || [];
 
         // 2. Extract Actual Themes from THIS year's text (Helper prompt)
-        const themeExtractionModel = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+        const themeExtractionModel = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
         const themeResponse = await themeExtractionModel.generateContent(`Extract exactly 15 core syllabus themes tested in this text. Output ONLY a comma separated list. TEXT:\n${paperText.substring(0, 15000)}`);
         const actualThemesForThisYear = themeResponse.response.text();
         const themesArray = actualThemesForThisYear.split(',').map(t => t.trim());

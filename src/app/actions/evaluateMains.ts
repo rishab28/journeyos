@@ -136,7 +136,17 @@ Respond strictly with this JSON schema:
 
         const result = await model.generateContent(prompt);
         const text = result.response.text();
-        const parsedData = JSON.parse(text);
+        // --- Sanitize JSON Output ---
+        let cleanedText = text.trim();
+        cleanedText = cleanedText.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+
+        // Strip invisible control chars that break parse
+        cleanedText = cleanedText.replace(/[\x00-\x1F\x7F-\x9F]/g, (char) => {
+            if (char === '\n' || char === '\r' || char === '\t') return char;
+            return '';
+        });
+
+        const evalData = JSON.parse(cleanedText);
 
         // 5. Deduct credit
         const newCredits = credits - 1;
@@ -146,14 +156,14 @@ Respond strictly with this JSON schema:
             .eq('user_id', DEFAULT_USER_ID);
 
         return {
-            score: parsedData.score || 5,
-            keywords: parsedData.keywords || [],
-            missing: parsedData.missing || [],
-            feedback: parsedData.feedback || 'No feedback provided.',
-            introLength: parsedData.introLength || 0,
-            bodyStructure: parsedData.bodyStructure || 'Unable to assess structure.',
-            conclusionPresent: parsedData.conclusionPresent || false,
-            topperComparison: parsedData.topperComparison || 'Comparsion unavailable.',
+            score: evalData.score || 5,
+            keywords: evalData.keywords || [],
+            missing: evalData.missing || [],
+            feedback: evalData.feedback || 'No feedback provided.',
+            introLength: evalData.introLength || 0,
+            bodyStructure: evalData.bodyStructure || 'Unable to assess structure.',
+            conclusionPresent: evalData.conclusionPresent || false,
+            topperComparison: evalData.topperComparison || 'Comparsion unavailable.',
             creditsRemaining: newCredits
         };
     } catch (err) {

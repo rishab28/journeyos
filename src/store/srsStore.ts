@@ -70,9 +70,13 @@ export function calculateSM2(
     }
 
     // Update ease factor: EF' = EF + (0.1 - (5-q) * (0.08 + (5-q) * 0.02))
-    newEF =
-        easeFactor +
-        (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02));
+    // Modified to ensure Quality 4 (Hesitation) results in a slight drop
+    let efChange = 0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02);
+    if (quality === 4) {
+        efChange = -0.05; // Slight penalty for hesitation so it doesn't stay flat
+    }
+
+    newEF = easeFactor + efChange;
 
     // Minimum EF is 1.3
     if (newEF < 1.3) newEF = 1.3;
@@ -737,6 +741,21 @@ export const useSRSStore = create<SRSStore>((set, get) => ({
                 .eq('id', cardId);
 
             if (error) throw error;
+
+            // ─── Insert Review History (Audit Trail) ───
+            await supabase
+                .from('review_history')
+                .insert({
+                    card_id: cardId,
+                    quality,
+                    recalled,
+                    failure_reason: failureReason || null,
+                    certainty_score: certaintyScore || null,
+                    time_to_answer_ms: timeToAnswerMs || null,
+                    ease_factor: newSRS.easeFactor,
+                    interval_days: newSRS.interval,
+                });
+
             set({ syncStatus: 'synced' });
         } catch (err) {
             console.error('Sync failed:', err);

@@ -1,10 +1,12 @@
 // ═══════════════════════════════════════════════════════════
 // JourneyOS — Progress Store ("Needle State")
 // Tracks accuracy, streaks, daily goals, and rank probability
+// Syncs to Supabase: profiles + user_progress tables
 // ═══════════════════════════════════════════════════════════
 
 import { create } from 'zustand';
 import { Subject, type SubjectStat, type UserProgress } from '@/types';
+import { supabase } from '@/lib/supabase/client';
 
 // Initialize subject stats
 function initSubjectStats(): Record<Subject, SubjectStat> {
@@ -21,10 +23,8 @@ function calculateRankProbability(
     totalReviewed: number,
     currentStreak: number
 ): number {
-    // Weighted formula:
-    // 50% accuracy + 30% volume factor + 20% streak factor
-    const volumeFactor = Math.min(totalReviewed / 100, 1) * 100; // caps at 100 cards
-    const streakFactor = Math.min(currentStreak / 20, 1) * 100;  // caps at 20 streak
+    const volumeFactor = Math.min(totalReviewed / 100, 1) * 100;
+    const streakFactor = Math.min(currentStreak / 20, 1) * 100;
 
     const probability =
         accuracy * 0.5 +
@@ -40,6 +40,11 @@ interface ProgressStore extends UserProgress {
     todayReviewed: number;
     dailyProgress: number; // 0 to 1
 
+    // Sync state
+    userId: string | null;
+    isHydrated: boolean;
+    syncStatus: 'idle' | 'syncing' | 'synced' | 'error';
+
     // Personalization
     setUPSC_IQ: (iq: number) => void;
     setInterestProfile: (profile: string) => void;
@@ -48,6 +53,10 @@ interface ProgressStore extends UserProgress {
     recordAnswer: (subject: Subject, isCorrect: boolean) => void;
     setDailyGoal: (goal: number) => void;
     reset: () => void;
+
+    // Supabase Sync
+    hydrateFromSupabase: () => Promise<void>;
+    syncToSupabase: () => Promise<void>;
 }
 
 export const useProgressStore = create<ProgressStore>((set, get) => ({
@@ -61,16 +70,150 @@ export const useProgressStore = create<ProgressStore>((set, get) => ({
     subjectStats: initSubjectStats(),
 
     // Personalization
-    upscIQ: 0, // 0 indicates not onboarded yet
-    interestProfile: 'Geopolitics', // Default
+    upscIQ: 0,
+    interestProfile: 'Geopolitics',
 
     // Daily goal
     dailyGoal: 20,
     todayReviewed: 0,
     dailyProgress: 0,
 
-    setUPSC_IQ: (iq) => set({ upscIQ: iq }),
-    setInterestProfile: (profile) => set({ interestProfile: profile }),
+    // Sync state
+    userId: null,
+    isHydrated: false,
+    syncStatus: 'idle',
+
+    setUPSC_IQ: (iq) => {
+        set({ upscIQ: iq });
+        // Also sync to Supabase
+        setTimeout(() => get().syncToSupabase(), 0);
+    },
+    setInterestProfile: (profile) => {
+        set({ interestProfile: profile });
+        setTimeout(() => get().syncToSupabase(), 0);
+    },
+
+    // ─── Hydrate from Supabase on App Load ──────────────────
+    hydrateFromSupabase: async () => {
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) {
+                // No auth user — stay with local state (MVP mode)
+                set({ isHydrated: true });
+                return;
+            }
+
+            set({ userId: user.id });
+
+            // Fetch profile
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('upsc_iq, interest_profile, current_streak, best_streak, total_reviewed')
+                .eq('user_id', user.id)
+                .single();
+
+            // Fetch progress
+            const { data: progress } = await supabase
+                .from('user_progress')
+                .select('*')
+                .eq('user_id', user.id)
+                .single();
+
+            const today = new Date().toISOString().split('T')[0];
+            let todayReviewed = 0;
+
+            if (progress) {
+                // Reset daily counter if it's a new day
+                if (progress.last_review_date === today) {
+                    todayReviewed = progress.today_reviewed || 0;
+                }
+
+                const totalReviewed = (progress.correct_count || 0) + (progress.incorrect_count || 0);
+                const accuracy = totalReviewed > 0
+                    ? Math.round((progress.correct_count / totalReviewed) * 1000) / 10
+                    : 0;
+
+                // Parse subject stats from JSONB (handle both fresh and existing)
+                let subjectStats = initSubjectStats();
+                if (progress.subject_stats && typeof progress.subject_stats === 'object') {
+                    subjectStats = { ...subjectStats, ...progress.subject_stats };
+                }
+
+                set({
+                    correctCount: progress.correct_count || 0,
+                    incorrectCount: progress.incorrect_count || 0,
+                    totalReviewed,
+                    accuracy,
+                    subjectStats,
+                    dailyGoal: progress.daily_goal || 20,
+                    todayReviewed,
+                    dailyProgress: Math.min(todayReviewed / (progress.daily_goal || 20), 1),
+                });
+            }
+
+            if (profile) {
+                const rankProbability = calculateRankProbability(
+                    get().accuracy,
+                    profile.total_reviewed || 0,
+                    profile.current_streak || 0
+                );
+
+                set({
+                    upscIQ: profile.upsc_iq || 0,
+                    interestProfile: profile.interest_profile || 'Geopolitics',
+                    currentStreak: profile.current_streak || 0,
+                    bestStreak: profile.best_streak || 0,
+                    rankProbability,
+                });
+            }
+
+            set({ isHydrated: true });
+        } catch (error) {
+            console.warn('[ProgressStore] Hydration failed (probably no auth):', error);
+            set({ isHydrated: true }); // Allow app to proceed even without auth
+        }
+    },
+
+    // ─── Sync to Supabase (Background, Fire-and-Forget) ────
+    syncToSupabase: async () => {
+        const state = get();
+        if (!state.userId) return; // No auth user — skip sync
+
+        set({ syncStatus: 'syncing' });
+
+        try {
+            // Update profiles
+            await supabase
+                .from('profiles')
+                .update({
+                    upsc_iq: state.upscIQ,
+                    interest_profile: state.interestProfile,
+                    current_streak: state.currentStreak,
+                    best_streak: state.bestStreak,
+                    total_reviewed: state.totalReviewed,
+                })
+                .eq('user_id', state.userId);
+
+            // Upsert user_progress
+            await supabase
+                .from('user_progress')
+                .upsert({
+                    user_id: state.userId,
+                    subject_stats: state.subjectStats,
+                    total_accuracy: state.accuracy,
+                    correct_count: state.correctCount,
+                    incorrect_count: state.incorrectCount,
+                    daily_goal: state.dailyGoal,
+                    today_reviewed: state.todayReviewed,
+                    last_review_date: new Date().toISOString().split('T')[0],
+                }, { onConflict: 'user_id' });
+
+            set({ syncStatus: 'synced' });
+        } catch (error) {
+            console.error('[ProgressStore] Sync failed:', error);
+            set({ syncStatus: 'error' });
+        }
+    },
 
     recordAnswer: (subject: Subject, isCorrect: boolean) => {
         const state = get();
@@ -122,6 +265,9 @@ export const useProgressStore = create<ProgressStore>((set, get) => ({
             subjectStats,
             dailyProgress,
         });
+
+        // Background sync to Supabase (non-blocking)
+        setTimeout(() => get().syncToSupabase(), 0);
     },
 
     setDailyGoal: (goal: number) => {
@@ -130,9 +276,10 @@ export const useProgressStore = create<ProgressStore>((set, get) => ({
             dailyGoal: goal,
             dailyProgress: Math.min(state.todayReviewed / goal, 1),
         });
+        setTimeout(() => get().syncToSupabase(), 0);
     },
 
-    reset: () =>
+    reset: () => {
         set({
             totalReviewed: 0,
             correctCount: 0,
@@ -144,5 +291,7 @@ export const useProgressStore = create<ProgressStore>((set, get) => ({
             subjectStats: initSubjectStats(),
             todayReviewed: 0,
             dailyProgress: 0,
-        }),
+        });
+        setTimeout(() => get().syncToSupabase(), 0);
+    },
 }));

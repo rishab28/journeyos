@@ -75,7 +75,7 @@ export async function generateMCQ(
             ],
             generationConfig: {
                 temperature: 0.5,
-                maxOutputTokens: 1024,
+                maxOutputTokens: 8192,
                 responseMimeType: 'application/json',
                 responseSchema: {
                     type: SchemaType.ARRAY,

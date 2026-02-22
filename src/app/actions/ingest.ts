@@ -90,37 +90,44 @@ export async function ingestText(input: IngestInput): Promise<IngestResult> {
         const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
         const supabase = createClient(supabaseUrl, supabaseKey);
-        const cardsToInsert = cardsWithEmbeddings.map(card => ({
-            type: card.type || 'FLASHCARD',
-            domain: domain as string,
-            subject: subject as string,
-            topic,
-            sub_topic: card.subTopic || null,
-            difficulty: card.difficulty || 'MEDIUM',
-            exam_tags: examTags,
-            scaffold_level: card.scaffoldLevel || 'Intermediate',
-            custom_analogy: card.customAnalogy || null,
-            status: 'live',  // ← Directly live, no review needed for admin uploads
-            front: card.front,
-            back: card.back,
-            explanation: card.explanation || null,
-            topper_trick: card.topperTrick || null,
-            elimination_trick: card.eliminationTrick || null,
-            mains_point: card.mainsPoint || null,
-            syllabus_topic: card.syllabusTopic || null,
-            cross_refs: card.crossRefs || null,
-            is_pyq_tagged: card.isPyqTagged || false,
-            pyq_years: card.pyqYears || null,
-            current_affairs: card.currentAffairs || null,
-            priority_score: card.priorityScore ?? 5,
-            options: card.options || null,
-            source_pdf: sourcePdf || null,
-            ease_factor: 2.5,
-            interval: 0,
-            repetitions: 0,
-            embedding: card.embedding,
-            next_review_date: new Date().toISOString(),
-        }));
+        const cardsToInsert = cardsWithEmbeddings.map(card => {
+            // Prepare the insert payload for Supabase
+            // Clean properties that don't exist in Supabase DB or need specific mapping
+            const sanitizedCardData = {
+                type: card.type || 'FLASHCARD',
+                domain: domain as string, // Use the domain from input
+                subject: subject as string, // Use the subject from input
+                topic: topic, // Use the topic from input
+                front: card.front,
+                back: card.back,
+                options: card.options || null,
+                difficulty: card.difficulty || 'MEDIUM',
+                exam_tags: examTags, // Use examTags from input
+                status: 'live', // Directly live, no review needed for admin uploads
+                explanation: card.explanation || null,
+                topper_trick: card.topperTrick || null,
+                source_pdf: sourcePdf || null, // Use sourcePdf from input
+                ease_factor: 2.5,
+                interval: 0,
+                repetitions: 0,
+                embedding: card.embedding,
+                next_review_date: new Date().toISOString(),
+                // These properties are commented out as per the instruction's implied intent
+                // to prevent schema validation failures if they don't exist in the DB.
+                // sub_topic: card.subTopic || null,
+                // elimination_trick: card.eliminationTrick || null,
+                // mains_point: card.mainsPoint || null,
+                // syllabus_topic: card.syllabusTopic || null,
+                // cross_refs: card.crossRefs || null,
+                // is_pyq_tagged: card.isPyqTagged || false,
+                // pyq_years: card.pyqYears || null,
+                // current_affairs: card.currentAffairs || null,
+                // priority_score: card.priorityScore ?? 5,
+                // scaffold_level: card.scaffoldLevel || 'Intermediate',
+                // custom_analogy: card.customAnalogy || null,
+            };
+            return sanitizedCardData;
+        });
 
         const { error: dbError } = await supabase
             .from('cards')
