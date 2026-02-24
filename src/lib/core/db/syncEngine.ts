@@ -164,6 +164,31 @@ export const syncEngine = {
                     .eq('user_id', user.id)
                     .single();
                 if (progress) await db.userProgress.put(progress);
+
+                // 4. Pull Squads & Shared Intel
+                const { data: squadMembers } = await supabase
+                    .from('squad_members')
+                    .select('*, squads(*)')
+                    .eq('user_id', user.id);
+
+                if (squadMembers) {
+                    await db.squads.bulkPut(squadMembers.map((m: any) => m.squads));
+                    await db.squad_members.bulkPut(squadMembers.map((m: any) => ({
+                        id: m.id,
+                        squad_id: m.squad_id,
+                        user_id: m.user_id,
+                        role: m.role
+                    })));
+
+                    const squadIds = squadMembers.map((m: any) => m.squad_id);
+                    const { data: intel } = await supabase
+                        .from('shared_intel')
+                        .select('*')
+                        .in('squad_id', squadIds)
+                        .gt('created_at', lastSyncTime);
+
+                    if (intel) await db.shared_intel.bulkPut(intel);
+                }
             }
 
             await db.cleanupExpiredStories();
@@ -248,5 +273,27 @@ export const syncEngine = {
             console.error('[SyncEngine] pushLocalChanges failed:', error);
             return { success: false, error };
         }
+    },
+
+    /**
+     * Initialize listeners for automatic synchronization
+     */
+    init() {
+        if (typeof window === 'undefined') return;
+
+        console.log('[SyncEngine] Initializing auto-sync listeners...');
+
+        window.addEventListener('online', () => {
+            console.log('[SyncEngine] Network back online. Triggering sync pulse...');
+            this.pushLocalChanges();
+            this.pullLatestData();
+        });
+
+        // Periodic sync every 2 minutes if online
+        setInterval(() => {
+            if (navigator.onLine) {
+                this.pushLocalChanges();
+            }
+        }, 120000);
     }
 };

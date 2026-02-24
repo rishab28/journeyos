@@ -14,17 +14,25 @@ export class JourneyDatabase extends Dexie {
     syncQueue!: Table<LocalReview>;
     profiles!: Table<any>;
     userProgress!: Table<any>;
+    squads!: Table<any>;
+    squad_members!: Table<any>;
+    shared_intel!: Table<any>;
 
     constructor() {
         super('JourneyOS_DB');
-        this.version(2).stores({
+        this.version(3).stores({
             // Primary key is id
             // Indexes: type, subject, topic, status, nextReviewDate (for SRS filtering), priorityScore
-            cards: 'id, type, subject, topic, status, srs.nextReviewDate, priorityScore, updatedAt',
+            cards: 'id, type, subject, topic, subTopic, status, srs.nextReviewDate, priorityScore, updatedAt',
 
             // Primary key is id
             // Indexes: subject, expiresAt (for cleanup)
             stories: 'id, subject, expiresAt',
+
+            // Squad Intelligence (Social)
+            squads: 'id, name, invite_code',
+            squad_members: 'id, squad_id, user_id',
+            shared_intel: 'id, squad_id, type, target_id, title',
 
             // Primary key is id (auto-increment)
             // Indexes: cardId, synced (to find pending reviews), timestamp

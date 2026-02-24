@@ -259,7 +259,7 @@ const StudyCard = memo(function StudyCard({ card, isActive, isRapidFire, onAnswe
         }
 
         // Share to the first squad for now (MVP)
-        const squad = squadsRes.squads[0];
+        const squad = squadsRes.squads[0] as any;
         const res = await shareIntel(squad.id, 'card', card.id, card.front, {
             front: card.front,
             back: card.back,

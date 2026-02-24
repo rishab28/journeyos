@@ -165,7 +165,7 @@ export const useSRSStore = create<SRSStore>()(
             fetchLiveCards: async () => {
                 set({ isLoading: true, sessionStartMs: Date.now(), fastSwipeCount: 0, isBurnoutMode: false });
                 try {
-                    const { activeSubject, activeTopic, activeChapter, activeType } = get();
+                    const { activeSubject, activeTopic, activeChapter, activeType, isBurnoutMode } = get();
 
                     let dexieCards = await db.cards.toArray();
 
@@ -231,13 +231,25 @@ export const useSRSStore = create<SRSStore>()(
                         });
 
                         const isMastermindMode = activeSubject !== 'Mixed' || activeTopic || activeChapter || activeType !== 'All';
+                        const staminaRecommendation = staminaEngine.recommendNextCardType();
                         let finalFeed: StudyCard[] = [];
 
                         if (isMastermindMode) {
                             finalFeed = aliveCards.slice(0, 50);
                         } else {
-                            // Phase 22: NEURAL FOCUS (Auto-Priority)
+                            // Phase 18: SURGICAL PACING (Bio-Sense)
                             const { subjectStats } = useProgressStore.getState();
+
+                            // 1. Filter based on Stamina Recommendation
+                            let prioritizedCards = [...aliveCards];
+                            if (staminaRecommendation === 'MNEMONIC_ONLY' || isBurnoutMode) {
+                                prioritizedCards = aliveCards.filter(c => c.topperTrick || c.difficulty === Difficulty.EASY);
+                                // If not enough easy cards, fallback to some predicted ones but keep it light
+                                if (prioritizedCards.length < 5) {
+                                    prioritizedCards = [...prioritizedCards, ...aliveCards.filter(c => !prioritizedCards.includes(c)).slice(0, 10)];
+                                }
+                            }
+
                             let weakestSubject = null;
                             let lowestAccuracy = 100;
 
@@ -249,24 +261,47 @@ export const useSRSStore = create<SRSStore>()(
                                 }
                             }
 
-                            const pyqs = aliveCards.filter(c => c.type === CardType.PYQ);
-                            const predicted = aliveCards.filter(c => (c.oracleConfidence || 0) > 80);
-                            const ca = aliveCards.filter(c => c.subject === Subject.CURRENT_AFFAIRS);
-                            const neuralFocus = weakestSubject ? aliveCards.filter(c => c.subject === weakestSubject && c.type !== CardType.PYQ) : [];
+                            const pyqs = prioritizedCards.filter(c => c.type === CardType.PYQ);
+                            const predicted = prioritizedCards.filter(c => (c.oracleConfidence || 0) > 80);
+                            const ca = prioritizedCards.filter(c => c.subject === Subject.CURRENT_AFFAIRS);
+                            const neuralFocus = weakestSubject ? prioritizedCards.filter(c => c.subject === weakestSubject && c.type !== CardType.PYQ) : [];
 
-                            const others = aliveCards.filter(c => c.type !== CardType.PYQ && (c.oracleConfidence || 0) <= 80 && c.subject !== Subject.CURRENT_AFFAIRS && c.subject !== weakestSubject);
+                            const others = prioritizedCards.filter(c => !pyqs.includes(c) && !predicted.includes(c) && !ca.includes(c) && !neuralFocus.includes(c));
 
                             const targetCount = 20;
-                            const pCount = Math.ceil(targetCount * 0.2);
-                            const prCount = Math.ceil(targetCount * 0.2);
-                            const focusCount = Math.ceil(targetCount * 0.4); // 40% priority to weakest subject (Neural Focus)
-                            const cCount = Math.ceil(targetCount * 0.2);
+                            // Throttled pacing if stamina is low
+                            const pWeight = staminaRecommendation === 'NORMAL' ? 0.2 : 0.1;
+                            const prWeight = staminaRecommendation === 'NORMAL' ? 0.2 : 0.1;
+                            const focusWeight = staminaRecommendation === 'NORMAL' ? 0.4 : 0.2;
+                            const caWeight = 0.2;
+                            const mnemonicsWeight = staminaRecommendation === 'NORMAL' ? 0 : 0.4;
 
-                            finalFeed = [...pyqs.slice(0, pCount), ...predicted.slice(0, prCount), ...neuralFocus.slice(0, focusCount), ...ca.slice(0, cCount)];
+                            const pCount = Math.ceil(targetCount * pWeight);
+                            const prCount = Math.ceil(targetCount * prWeight);
+                            const focusCount = Math.ceil(targetCount * focusWeight);
+                            const cCount = Math.ceil(targetCount * caWeight);
+                            const mCount = Math.ceil(targetCount * mnemonicsWeight);
+
+                            const mnemonics = prioritizedCards.filter(c => c.topperTrick).slice(0, mCount);
+
+                            finalFeed = [
+                                ...pyqs.slice(0, pCount),
+                                ...predicted.slice(0, prCount),
+                                ...neuralFocus.slice(0, focusCount),
+                                ...ca.slice(0, cCount),
+                                ...mnemonics
+                            ];
+
                             if (finalFeed.length < targetCount) {
                                 finalFeed = [...finalFeed, ...others.slice(0, targetCount - finalFeed.length)];
                             }
-                            finalFeed.sort(() => Math.random() - 0.5);
+
+                            // If stamina is low, don't shuffle randomly, keep the easiest ones first
+                            if (staminaRecommendation !== 'NORMAL') {
+                                finalFeed.sort((a, b) => (a.difficulty === Difficulty.EASY ? -1 : 1));
+                            } else {
+                                finalFeed.sort(() => Math.random() - 0.5);
+                            }
                         }
 
                         const subjects = Array.from(new Set(dexieCards.map(c => c.subject as Subject)));
@@ -355,6 +390,8 @@ export const useSRSStore = create<SRSStore>()(
                 };
 
                 const cognitiveMetrics = cognitiveEngine.evaluateHesitation(card.scaffoldLevel || 'Intermediate', quality);
+                // Phase 18: Process Stamina Event
+                staminaEngine.processReviewEvent(quality, cognitiveMetrics.isPseudoKnowledge);
                 const { msi } = staminaEngine.getCurrentStamina();
 
                 const lastTopic = get().lastCardTopic;

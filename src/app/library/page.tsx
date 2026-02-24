@@ -11,6 +11,8 @@ import { globalSearchCards, generateMissionBrief } from '@/app/actions/learner';
 import { getConnectedIntel } from '@/app/actions/intel';
 import { triggerHaptic } from '@/lib/core/haptics';
 import MissionBriefPanel from '@/components/shared/MissionBriefPanel';
+import BioSenseDashboard from '@/components/intelligence/BioSenseDashboard';
+import { GlassCard } from '@/components/ui/GlassCard';
 
 const SUBJECTS = [
     'All', 'Polity', 'History', 'Geography', 'Economy', 'Enviro', 'Sci & Tech'
@@ -199,6 +201,11 @@ export default function LibraryPage() {
                         </div>
                     ) : (
                         <>
+                            {/* 0. Bio-Sense Dashboard (Sprint 18) */}
+                            <div className="mb-8">
+                                <BioSenseDashboard />
+                            </div>
+
                             {/* 1. Oracle Sniper List */}
                             <Link href="/war-room/oracle" className="block outline-none">
                                 <motion.div

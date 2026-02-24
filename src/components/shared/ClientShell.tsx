@@ -8,10 +8,17 @@
 import { usePathname } from 'next/navigation';
 import BottomNav from '@/components/navigation/BottomNav';
 import OnboardingModal from '@/components/onboarding/OnboardingModal';
+import AdaptiveBreakModal from '@/components/shared/AdaptiveBreakModal';
+import { useEffect } from 'react';
+import { syncEngine } from '@/lib/core/db/syncEngine';
 
 export default function ClientShell({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
     const isAdmin = pathname.startsWith('/admin');
+
+    useEffect(() => {
+        syncEngine.init();
+    }, []);
 
     return (
         <>
@@ -20,6 +27,7 @@ export default function ClientShell({ children }: { children: React.ReactNode })
             </div>
             {!isAdmin && <BottomNav />}
             {!isAdmin && <OnboardingModal />}
+            <AdaptiveBreakModal />
         </>
     );
 }

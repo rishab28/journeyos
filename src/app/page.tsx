@@ -21,6 +21,7 @@ import PracticeNavigator from '@/components/practice/PracticeNavigator';
 import VerticalReels from '@/components/stories/VerticalReels';
 import DuelSystem from '@/components/practice/DuelSystem';
 import SquadDashboard from '@/components/squads/SquadDashboard';
+import SyncStatusIndicator from '@/components/shared/SyncStatusIndicator';
 import { getDiscoveryFeed, getActiveStories } from '@/app/actions/learner';
 import { StudyCard, CurrentAffairStory } from '@/types';
 
@@ -76,6 +77,9 @@ export default function HomePage() {
       </div>
       {/* ── Top Navigation Bar: Glass Blade (Standard Flow) ── */}
       <div className="relative z-50 flex flex-col pt-10 pb-10 bg-black/95 backdrop-blur-3xl border-b border-white/[0.05]">
+        <div className="absolute right-6 top-10 sm:right-10">
+          <SyncStatusIndicator />
+        </div>
         <div className="flex justify-center items-center gap-10 px-4 scale-90 sm:scale-100">
           <button
             onClick={() => handleTabSwitch('study')}

@@ -6,6 +6,7 @@ import { Users, Share2, Plus, LogIn, MessageSquare, AlertTriangle } from 'lucide
 import { createSquad, joinSquad, getMySquads, getSquadIntel } from '@/app/actions/squads';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { triggerHaptic } from '@/lib/core/haptics';
+import { db } from '@/lib/core/db/indexedDB';
 
 interface Squad {
     id: string;
@@ -32,20 +33,52 @@ export default function SquadDashboard() {
 
     const loadData = async () => {
         setIsLoading(true);
-        const res = await getMySquads();
-        if (res.success && res.squads) {
-            setSquads(res.squads);
-            if (res.squads.length > 0) {
-                setActiveSquad(res.squads[0]);
-                loadIntel(res.squads[0].id);
+        // 1. Load from Dexie first (Instant UI)
+        const localSquads = await db.squads.toArray() as Squad[];
+        if (localSquads.length > 0) {
+            setSquads(localSquads.map(s => ({ ...s, myRole: (s as any).myRole || 'member' })));
+            setActiveSquad(localSquads[0]);
+            const localIntel = await db.shared_intel.where('squad_id').equals(localSquads[0].id).toArray();
+            setIntel(localIntel);
+        }
+
+        // 2. Fetch from server if online
+        if (navigator.onLine) {
+            const res = await getMySquads();
+            if (res.success && res.squads) {
+                setSquads(res.squads as unknown as Squad[]);
+                // Update Dexie
+                await db.squads.bulkPut(res.squads);
+
+                if (res.squads && res.squads.length > 0) {
+                    const currentSquad = activeSquad || (res.squads[0] as unknown as Squad);
+                    setActiveSquad(currentSquad);
+                    const intelRes = await getSquadIntel(currentSquad.id as string);
+                    if (intelRes.success) {
+                        setIntel(intelRes.intel || []);
+                        await db.shared_intel.where('squad_id').equals(currentSquad.id).delete();
+                        await db.shared_intel.bulkPut(intelRes.intel || []);
+                    }
+                }
             }
         }
         setIsLoading(false);
     };
 
     const loadIntel = async (squadId: string) => {
-        const res = await getSquadIntel(squadId);
-        if (res.success) setIntel(res.intel || []);
+        // 1. Try local
+        const localIntel = await db.shared_intel.where('squad_id').equals(squadId).toArray();
+        if (localIntel.length > 0) setIntel(localIntel);
+
+        // 2. Refresh from server
+        if (navigator.onLine) {
+            const res = await getSquadIntel(squadId);
+            if (res.success) {
+                setIntel(res.intel || []);
+                await db.shared_intel.where('squad_id').equals(squadId).delete();
+                await db.shared_intel.bulkPut(res.intel || []);
+            }
+        }
     };
 
     const handleCreateSquad = async () => {

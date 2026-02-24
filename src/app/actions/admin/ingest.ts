@@ -172,7 +172,7 @@ export async function ingestText(input: IngestInput): Promise<IngestResult> {
         const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
         const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
-        const supabase = createClient(supabaseUrl, supabaseKey);
+        const serviceClient = createClient(supabaseUrl, supabaseKey);
         const cardsToInsert = cardsWithEmbeddings.map((card, idx) => {
             const qa = qaResults[idx] || { score: 85, reason: "QA Error" };
             const status = qa.score >= 60 ? 'pending_review' : 'rejected';
@@ -212,7 +212,7 @@ export async function ingestText(input: IngestInput): Promise<IngestResult> {
             return sanitizedCardData;
         });
 
-        const { error: dbError } = await supabase
+        const { error: dbError } = await serviceClient
             .from('cards')
             .insert(cardsToInsert);
 
@@ -229,7 +229,7 @@ export async function ingestText(input: IngestInput): Promise<IngestResult> {
         if (sourcePdf) {
             try {
                 // Upsert to ensure record exists and update card yield
-                const { data: existingMeta } = await supabase
+                const { data: existingMeta } = await serviceClient
                     .from('source_metadata')
                     .select('card_yield')
                     .eq('filename', sourcePdf)
@@ -237,7 +237,7 @@ export async function ingestText(input: IngestInput): Promise<IngestResult> {
 
                 const currentYield = (existingMeta?.card_yield || 0) + allCards.length;
 
-                await supabase
+                await serviceClient
                     .from('source_metadata')
                     .upsert({
                         filename: sourcePdf,
