@@ -7,7 +7,7 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ingestNews, NewsIngestResult } from '@/app/actions/ingestNews';
+import { ingestNews, NewsIngestResult } from '@/app/actions/admin';
 import { toast } from 'sonner';
 
 export default function AdminNewsPage() {

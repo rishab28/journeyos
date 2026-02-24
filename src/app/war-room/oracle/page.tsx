@@ -4,7 +4,7 @@
 // JourneyOS — War Room: Oracle Predictor
 // ═══════════════════════════════════════════════════════════
 
-import OracleSniperList from '@/components/OracleSniperList';
+import OracleSniperList from '@/components/oracle/OracleSniperList';
 
 export default function OraclePage() {
     return (

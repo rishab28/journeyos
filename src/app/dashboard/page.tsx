@@ -7,14 +7,15 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import DailyDashboard from '@/components/DailyDashboard';
-import SubjectMastery from '@/components/SubjectMastery';
-import MemoryHeatmap from '@/components/MemoryHeatmap';
-import MemoryLeakAlert from '@/components/MemoryLeakAlert';
-import SyllabusMap from '@/components/SyllabusMap';
-import FailureAudit from '@/components/FailureAudit';
-import AutonomousDashboard from '@/components/AutonomousDashboard';
-import SynapseGraph from '@/components/SynapseGraph';
+import DailyDashboard from '@/components/dashboard/DailyDashboard';
+import SubjectMastery from '@/components/analytics/SubjectMastery';
+import MemoryHeatmap from '@/components/analytics/MemoryHeatmap';
+import MemoryLeakAlert from '@/components/intelligence/MemoryLeakAlert';
+import SyllabusMap from '@/components/shared/SyllabusMap';
+import FailureAudit from '@/components/intelligence/FailureAudit';
+import AutonomousDashboard from '@/components/dashboard/AutonomousDashboard';
+import StudyTools from '@/components/study/StudyTools';
+import DeepIntelligence from '@/components/oracle/DeepIntelligence';
 import Link from 'next/link';
 import { useProgressStore } from '@/store/progressStore';
 import { useSRSStore } from '@/store/srsStore';
@@ -23,8 +24,8 @@ export default function DashboardPage() {
     const { rankProbability, totalReviewed, accuracy, currentStreak, bestStreak, upscIQ } = useProgressStore();
     const cards = useSRSStore((s) => s.cards);
 
-    // Phase 7: Tabbed Navigation State
-    const [activeTab, setActiveTab] = useState<'overview' | 'analytics' | 'mastery'>('overview');
+    // Phase 29: Tabbed Navigation State
+    const [activeTab, setActiveTab] = useState<'overview' | 'analytics' | 'mastery' | 'tools'>('overview');
 
     const [mounted, setMounted] = useState(false);
     useEffect(() => { setMounted(true); }, []);
@@ -51,21 +52,6 @@ export default function DashboardPage() {
     const percentile = getPercentile();
     const aspirantRank = Math.max(1, Math.round(10000 * (1 - percentile / 100)));
 
-    // Phase 16: Autonomous Dashboard intervention for true beginners
-    if (mounted && upscIQ > 0 && upscIQ < 50) {
-        return (
-            <main className="relative min-h-screen bg-[#0b0e17] pt-4 pb-24 overflow-x-hidden">
-                <div className="fixed inset-0 z-0 pointer-events-none bg-black">
-                    <div className="bg-orb bg-orb-1 opacity-20" />
-                    <div className="bg-orb bg-orb-2 opacity-20" />
-                </div>
-
-                <div className="relative z-10 max-w-lg mx-auto pt-8">
-                    <AutonomousDashboard />
-                </div>
-            </main>
-        );
-    }
 
     return (
         <main className="relative min-h-screen bg-black pb-32 overflow-x-hidden pt-8">
@@ -100,12 +86,12 @@ export default function DashboardPage() {
                 </div>
 
                 {/* ── Tabbed Navigation ── */}
-                <div className="flex gap-2 p-1.5 bg-white/[0.03] border border-white/[0.05] rounded-2xl mb-8">
-                    {(['overview', 'analytics', 'mastery'] as const).map((tab) => (
+                <div className="flex gap-2 p-1.5 bg-white/[0.03] border border-white/[0.05] rounded-2xl mb-8 overflow-x-auto no-scrollbar">
+                    {(['overview', 'analytics', 'mastery', 'tools'] as const).map((tab) => (
                         <button
                             key={tab}
                             onClick={() => setActiveTab(tab)}
-                            className={`relative flex-1 py-3 text-[11px] sm:text-[12px] font-extrabold uppercase tracking-[0.2em] rounded-xl transition-colors ${activeTab === tab ? 'text-white' : 'text-white/40 hover:text-white/60'
+                            className={`relative flex-1 min-w-[80px] py-3 text-[10px] sm:text-[11px] font-extrabold uppercase tracking-[0.2em] rounded-xl transition-colors ${activeTab === tab ? 'text-white' : 'text-white/40 hover:text-white/60'
                                 }`}
                         >
                             {activeTab === tab && (
@@ -252,10 +238,18 @@ export default function DashboardPage() {
                             transition={{ duration: 0.3 }}
                             className="space-y-4"
                         >
-                            {/* ── Memory Leak / Death Zone Alert (Bento) ── */}
                             <div className="rounded-3xl border border-rose-500/[0.15] bg-[#0a0a0a] p-5 sm:p-6 relative overflow-hidden">
                                 <div className="absolute top-0 right-0 w-32 h-32 bg-rose-500/5 blur-3xl rounded-full" />
                                 <MemoryLeakAlert />
+                            </div>
+
+                            {/* ── Phase 32: Oracle Deep Intelligence ── */}
+                            <div className="rounded-3xl border border-white/[0.06] bg-[#0a0a0a] p-5 sm:p-6 shadow-xl relative overflow-hidden">
+                                <p className="text-[10px] font-bold text-[#00ffcc] uppercase tracking-widest mb-6 flex items-center gap-2">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-[#00ffcc] shadow-[0_0_8px_#00ffcc]" />
+                                    Oracle Intelligence (V2.1)
+                                </p>
+                                <DeepIntelligence />
                             </div>
 
                             {/* ── Failure Audit (Root Cause Analysis) ── */}
@@ -309,6 +303,26 @@ export default function DashboardPage() {
                                     Syllabus Completion
                                 </p>
                                 <SyllabusMap />
+                            </div>
+                        </motion.div>
+                    )}
+
+                    {/* ── TOOLS TAB ── */}
+                    {activeTab === 'tools' && (
+                        <motion.div
+                            key="tools"
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -10 }}
+                            transition={{ duration: 0.3 }}
+                            className="space-y-4"
+                        >
+                            <div className="rounded-3xl border border-white/[0.06] bg-[#0a0a0a] p-5 sm:p-6 shadow-xl">
+                                <p className="text-[10px] font-bold text-white/50 uppercase tracking-widest mb-4 flex items-center gap-2">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-[#00ffcc]" />
+                                    Brain Vault: Visual IQ
+                                </p>
+                                <StudyTools />
                             </div>
                         </motion.div>
                     )}

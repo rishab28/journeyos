@@ -7,8 +7,10 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
-import { globalSearchCards } from '@/app/actions/cards';
-import { triggerHaptic } from '@/lib/haptics';
+import { globalSearchCards, generateMissionBrief } from '@/app/actions/learner';
+import { getConnectedIntel } from '@/app/actions/intel';
+import { triggerHaptic } from '@/lib/core/haptics';
+import MissionBriefPanel from '@/components/shared/MissionBriefPanel';
 
 const SUBJECTS = [
     'All', 'Polity', 'History', 'Geography', 'Economy', 'Enviro', 'Sci & Tech'
@@ -25,6 +27,32 @@ export default function LibraryPage() {
     };
     const [searchResults, setSearchResults] = useState<any[]>([]);
     const [isSearching, setIsSearching] = useState(false);
+
+    // ── Vault 2.0 State ──
+    const [isBriefOpen, setIsBriefOpen] = useState(false);
+    const [activeBrief, setActiveBrief] = useState({ briefing: '', nodeName: '', connections: [] });
+    const [isBriefLoading, setIsBriefLoading] = useState(false);
+
+    const handleNodeClick = async (nodeId: string, nodeName: string) => {
+        triggerHaptic('medium');
+        setIsBriefLoading(true);
+        setIsBriefOpen(true);
+
+        // Parallel fetch for Briefing and Causal Graph
+        const [briefRes, graphRes] = await Promise.all([
+            generateMissionBrief(nodeId),
+            getConnectedIntel(nodeId)
+        ]);
+
+        if (briefRes.success) {
+            setActiveBrief({
+                briefing: briefRes.briefing || '',
+                nodeName: briefRes.nodeName || nodeName,
+                connections: graphRes.success ? graphRes.graph : []
+            });
+        }
+        setIsBriefLoading(false);
+    };
 
     useEffect(() => {
         const delayDebounceFn = setTimeout(async () => {
@@ -59,9 +87,46 @@ export default function LibraryPage() {
                             The Vault
                         </h1>
                         <p className="text-white/40 text-xs uppercase tracking-widest mt-1">
-                            Curated Arsenals & Backtests
+                            Strategic Archive & Causal Graph
                         </p>
                     </div>
+                </div>
+
+                {/* ── Intelligence Saturation Dashboard (CEO Mode) ── */}
+                <div className="grid grid-cols-2 gap-4 mb-8">
+                    <motion.div
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        className="p-5 rounded-3xl bg-white/[0.03] border border-white/5 relative overflow-hidden group"
+                    >
+                        <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">🧠</div>
+                        <h4 className="text-[10px] text-white/30 uppercase tracking-widest font-bold mb-3">Intelligence Saturation</h4>
+                        <div className="flex items-end gap-2">
+                            <span className="text-3xl font-black text-[#00ffcc]">78%</span>
+                            <span className="text-[10px] text-emerald-400 font-bold mb-1">+12%</span>
+                        </div>
+                        <div className="w-full h-1 bg-white/5 rounded-full mt-3 overflow-hidden">
+                            <motion.div
+                                initial={{ width: 0 }}
+                                animate={{ width: '78%' }}
+                                transition={{ duration: 1, ease: 'easeOut' }}
+                                className="h-full bg-gradient-to-r from-[#00ffcc] to-emerald-500"
+                            />
+                        </div>
+                    </motion.div>
+
+                    <motion.div
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        className="p-5 rounded-3xl bg-white/[0.03] border border-white/5 relative overflow-hidden group"
+                    >
+                        <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">🔗</div>
+                        <h4 className="text-[10px] text-white/30 uppercase tracking-widest font-bold mb-3">Causal Connections</h4>
+                        <div className="flex items-end gap-2">
+                            <span className="text-3xl font-black text-white/90">2,412</span>
+                        </div>
+                        <p className="text-[10px] text-white/40 mt-3 font-medium">Nodes cross-linked via AI</p>
+                    </motion.div>
                 </div>
 
                 {/* Search Bar */}
@@ -113,6 +178,7 @@ export default function LibraryPage() {
                                             animate={{ opacity: 1, scale: 1 }}
                                             exit={{ opacity: 0, scale: 0.95 }}
                                             transition={{ duration: 0.2, delay: idx * 0.03 }}
+                                            onClick={() => handleNodeClick(card.id, card.front)}
                                             className="p-4 rounded-2xl bg-white/[0.03] border border-white/5 hover:border-[#00ffcc]/30 transition-all cursor-pointer group"
                                         >
                                             <div className="flex justify-between items-start mb-2">
@@ -197,6 +263,15 @@ export default function LibraryPage() {
                     )}
                 </div>
             </div>
+
+            {/* Mission Brief Slide-over */}
+            <MissionBriefPanel
+                isOpen={isBriefOpen}
+                onClose={() => setIsBriefOpen(false)}
+                briefing={isBriefLoading ? 'Synthesizing Strategic Intel...' : activeBrief.briefing}
+                nodeName={activeBrief.nodeName}
+                connections={activeBrief.connections}
+            />
         </div>
     );
 }

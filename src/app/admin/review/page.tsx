@@ -8,7 +8,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CardStatus, Domain, Subject } from '@/types';
-import { fetchReviewCards, batchApproveCards, rejectCards } from '@/app/actions/review';
+import { fetchReviewCards, batchApproveCards, rejectCards } from '@/app/actions/admin';
 
 interface CardRow {
     id: string;
@@ -164,8 +164,8 @@ export default function ReviewPage() {
                         key={tab.val}
                         onClick={() => { setStatusFilter(tab.val); setPage(1); setSelectedIds(new Set()); }}
                         className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-all ${statusFilter === tab.val
-                                ? `bg-white/10 ${tab.color}`
-                                : 'text-white/25 hover:text-white/40'
+                            ? `bg-white/10 ${tab.color}`
+                            : 'text-white/25 hover:text-white/40'
                             }`}
                     >
                         {tab.label}
@@ -260,8 +260,8 @@ export default function ReviewPage() {
                                     </td>
                                     <td className="py-3 pr-3">
                                         <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${card.type === 'MCQ' ? 'bg-blue-500/15 text-blue-400' :
-                                                card.type === 'PYQ' ? 'bg-orange-500/15 text-orange-400' :
-                                                    'bg-violet-500/15 text-violet-400'
+                                            card.type === 'PYQ' ? 'bg-orange-500/15 text-orange-400' :
+                                                'bg-violet-500/15 text-violet-400'
                                             }`}>
                                             {card.type}
                                         </span>
@@ -295,8 +295,8 @@ export default function ReviewPage() {
                                     </td>
                                     <td className="py-3 pr-3">
                                         <span className={`text-[10px] font-semibold ${card.difficulty === 'HARD' ? 'text-rose-400/70' :
-                                                card.difficulty === 'EASY' ? 'text-emerald-400/70' :
-                                                    'text-amber-400/70'
+                                            card.difficulty === 'EASY' ? 'text-emerald-400/70' :
+                                                'text-amber-400/70'
                                             }`}>
                                             {card.difficulty}
                                         </span>

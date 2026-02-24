@@ -8,6 +8,7 @@ export enum CardType {
   FLASHCARD = 'FLASHCARD',
   MCQ = 'MCQ',
   PYQ = 'PYQ',
+  MAINS = 'MAINS',
 }
 
 /** Difficulty levels */
@@ -38,6 +39,8 @@ export enum Subject {
   REASONING = 'Reasoning',
   ENGLISH = 'English',
   HINDI = 'Hindi',
+  PYQS = 'PYQs',
+  NOTIFICATIONS = 'UPSC Notifications',
 }
 
 /** Card lifecycle status */
@@ -168,6 +171,7 @@ export interface UserProgress {
   // Phase 16: Personalization
   upscIQ: number;            // Assessed baseline knowledge score
   interestProfile: string;   // E.g., 'Sports', 'Geopolitics', 'Movies'
+  targetExamDate?: string;   // ISO string of the target exam date
 }
 
 /** Per-subject statistics */
@@ -292,7 +296,10 @@ export interface ExtractedCard {
 export interface CurrentAffairStory {
   id: string;
   subject: Subject;
+  title?: string; // New: Direct title support
   content: string[]; // Array of strings or JSON slides
+  syllabusTopic?: string; // New: Surgical syllabus tag
+  mainsFodder?: string;  // New: High-value snippet
   mcqId?: string;    // Links to the validating card ID
   expiresAt: string;
   createdAt: string;

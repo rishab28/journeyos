@@ -1,0 +1,53 @@
+[
+    {
+        "id": "demo-001",
+        "front": "What is the key difference between Repo Rate and Reverse Repo Rate?",
+        "back": "Repo Rate is the rate at which RBI lends money to commercial banks. Reverse Repo Rate is the rate at which RBI borrows money from commercial banks.",
+        "explanation": "RBI uses Repo Rate to inject liquidity (money) into the market, and Reverse Repo Rate to absorb excess liquidity from the market. This helps control inflation and money supply.",
+        "custom_analogy": "Repo Rate = Bank asking RBI for a loan. Reverse Repo Rate = RBI taking a loan from the Bank.",
+        "subject": "Economy",
+        "topic": "Monetary Policy",
+        "sub_topic": "RBI Tools",
+        "difficulty_level": 5,
+        "is_active": true,
+        "lrs_enabled": true,
+        "is_pyq": true,
+        "extracted_from_url": "demo",
+        "created_at": "2024-01-01T00:00:00.000Z",
+        "updated_at": "2024-01-01T00:00:00.000Z"
+    },
+    {
+        "id": "demo-002",
+        "front": "Under Article 32, what are the five types of writs the Supreme Court can issue?",
+        "back": "Habeas Corpus, Mandamus, Prohibition, Certiorari, and Quo-Warranto.",
+        "explanation": "Article 32 is called the 'Heart and Soul of the Constitution' by Dr. B.R. Ambedkar because it provides the right to constitutional remedies for the enforcement of Fundamental Rights.",
+        "custom_analogy": "Writs are the 'legal weapons' the Supreme Court uses to protect a citizen's basic rights from the State.",
+        "subject": "Polity",
+        "topic": "Fundamental Rights",
+        "sub_topic": "Constitutional Remedies",
+        "difficulty_level": 6,
+        "is_active": true,
+        "lrs_enabled": true,
+        "is_pyq": true,
+        "extracted_from_url": "demo",
+        "created_at": "2024-01-01T00:00:00.000Z",
+        "updated_at": "2024-01-01T00:00:00.000Z"
+    },
+    {
+        "id": "demo-003",
+        "front": "What is the 'Greenhouse Effect'?",
+        "back": "The trapping of the sun's warmth in a planet's lower atmosphere due to greater transparency of the atmosphere to visible radiation from the sun than to infrared radiation emitted from the planet's surface.",
+        "explanation": "Major greenhouse gases include Carbon Dioxide (CO2), Methane (CH4), Nitrous Oxide (N2O), and water vapor. Without it, Earth would be too cold, but accelerated greenhouse effect causes global warming.",
+        "custom_analogy": "Like a car parked in the sun with windows rolled up—sunlight enters, but heat can't escape.",
+        "subject": "Environment",
+        "topic": "Climate Change",
+        "sub_topic": "Greenhouse Gases",
+        "difficulty_level": 4,
+        "is_active": true,
+        "lrs_enabled": true,
+        "is_pyq": false,
+        "extracted_from_url": "demo",
+        "created_at": "2024-01-01T00:00:00.000Z",
+        "updated_at": "2024-01-01T00:00:00.000Z"
+    }
+]

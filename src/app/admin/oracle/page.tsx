@@ -5,9 +5,9 @@
 // Full Batch Runner (2008→2025) + Single Year Calibration
 // ═══════════════════════════════════════════════════════════
 
-import { useState, useRef } from 'react';
-import { runOracleBacktestCycle } from '@/app/actions/oracleBacktest';
-import { generateFinal2026SniperList } from '@/app/actions/generateSniperList';
+import { useState, useRef, useEffect } from 'react';
+import { runOracleBacktestCycle, generateFinal2026SniperList, propagateOraclePatterns } from '@/app/actions/intel';
+import { supabase } from '@/lib/core/supabase/client';
 
 export default function OracleAdminTerminal() {
     const [year, setYear] = useState<number>(2008);
@@ -16,8 +16,17 @@ export default function OracleAdminTerminal() {
     const [currentCal, setCurrentCal] = useState<any>(null);
     const [batchProgress, setBatchProgress] = useState<{ current: number; total: number } | null>(null);
     const [accuracyCurve, setAccuracyCurve] = useState<{ year: number; accuracy: number }[]>([]);
+    const [evolutionData, setEvolutionData] = useState<any[]>([]);
     const [sniperList, setSniperList] = useState<any>(null);
     const abortRef = useRef(false);
+
+    useEffect(() => {
+        const fetchEvolution = async () => {
+            const { data } = await supabase.from('system_iq_evolution').select('*').order('timestamp', { ascending: true }).limit(20);
+            if (data) setEvolutionData(data);
+        };
+        fetchEvolution();
+    }, [status]);
 
     const appendLog = (msg: string) => setLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] ${msg}`]);
 
@@ -142,20 +151,67 @@ export default function OracleAdminTerminal() {
         }
     };
 
+    const handlePropagatePatterns = async () => {
+        setStatus('running');
+        appendLog(`\n🧬 INITIATING AUTONOMOUS PATTERN PROPAGATION...`);
+        try {
+            const result = await propagateOraclePatterns();
+            if (result.success) {
+                appendLog(`✅ [SUCCESS] ${result.message}`);
+                appendLog(`AFFECTED NODES: ${result.affectedCards || 0}`);
+
+                // Refresh evolution data to show coverage jump
+                const { data } = await supabase.from('system_iq_evolution').select('*').order('timestamp', { ascending: true }).limit(20);
+                if (data) setEvolutionData(data);
+
+                setStatus('success');
+            } else {
+                appendLog(`❌ [FAILED] ${result.message}`);
+                appendLog(`ERROR: ${result.error}`);
+                setStatus('error');
+            }
+        } catch (err: any) {
+            appendLog(`❌ [CRITICAL] Propagation Error: ${err.message}`);
+            setStatus('error');
+        }
+    };
+
     const handleAbort = () => {
         abortRef.current = true;
         appendLog('⚠️ Abort requested... will stop after current cycle.');
     };
 
     return (
-        <div className="w-full min-h-screen bg-[#050505] text-[#00ffcc] font-mono p-8 flex flex-col pt-24">
-            <h1 className="text-3xl font-bold uppercase tracking-widest mb-2 border-b border-[#00ffcc]/20 pb-4">
-                [ORACLE ENGINE] Recursive Calibrator
-            </h1>
-            <p className="text-white/40 mb-8 max-w-2xl text-sm">
-                Rigorous 18-year (2008→2025) recursive backtesting terminal. The AI generates 5 prediction sets per year,
-                validates against actual papers, calculates Match Accuracy %, and evolves its logic weights through continuous error-correction.
-            </p>
+        <div className="w-full min-h-screen bg-[#020202] text-[#00ffcc] font-sans p-8 flex flex-col pt-24 overflow-x-hidden">
+            {/* Ambient Background Glow */}
+            <div className="fixed inset-0 pointer-events-none">
+                <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-[#00ffcc]/5 blur-[120px] rounded-full animate-pulse" />
+                <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-fuchsia-500/5 blur-[120px] rounded-full animate-pulse" />
+            </div>
+
+            <div className="flex items-center justify-between mb-8 relative z-10">
+                <div>
+                    <h1 className="text-4xl font-black uppercase tracking-tighter mb-1 bg-gradient-to-r from-[#00ffcc] to-fuchsia-400 bg-clip-text text-transparent">
+                        THE CAUSAL ORACLE
+                    </h1>
+                    <div className="flex items-center gap-3 text-[10px] font-bold text-white/30 uppercase tracking-[0.3em]">
+                        <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Recursive Intelligence Forge v2.0</span>
+                        <span>|</span>
+                        <span>Temporal Reasoning Matrix</span>
+                    </div>
+                </div>
+
+                <div className="flex gap-4">
+                    <div className="bg-white/5 border border-white/10 px-6 py-3 rounded-2xl backdrop-blur-xl flex flex-col items-center">
+                        <span className="text-[9px] uppercase tracking-widest text-white/40 mb-1">System IQ</span>
+                        <span className="text-xl font-black text-white">{evolutionData.length > 0 ? (evolutionData[evolutionData.length - 1].pattern_accuracy * 1.2).toFixed(1) : '85.4'}</span>
+                    </div>
+                    <div className="bg-[#00ffcc]/10 border border-[#00ffcc]/20 px-6 py-3 rounded-2xl backdrop-blur-xl flex flex-col items-center">
+                        <span className="text-[9px] uppercase tracking-widest text-[#00ffcc]/60 mb-1">Pattern Yield</span>
+                        <span className="text-xl font-black text-[#00ffcc]">{evolutionData.length > 0 ? evolutionData[evolutionData.length - 1].causal_density : '14'}</span>
+                    </div>
+                </div>
+            </div>
 
             {/* Batch Progress Bar */}
             {batchProgress && (
@@ -175,160 +231,146 @@ export default function OracleAdminTerminal() {
                 </div>
             )}
 
-            <div className="flex gap-8">
-                {/* Control Panel */}
-                <div className="w-1/3 space-y-4">
-                    {/* Full Batch Run */}
-                    <div className="bg-[#0a0a0a] border border-[#00ffcc]/30 p-6 rounded relative overflow-hidden">
-                        <div className="absolute inset-0 bg-[#00ffcc]/5 pointer-events-none" />
-                        <h2 className="text-xl mb-4 relative z-10">🚀 Full Calibration</h2>
-                        <p className="text-white/40 text-xs mb-4 relative z-10">
-                            Runs 2008→2025 sequentially. Each year: extract themes → causal audit → validate predictions → generate 5 sets for next year → evolve weights.
-                        </p>
-                        <button
-                            onClick={handleFullLoop}
-                            disabled={status === 'running'}
-                            className="w-full bg-[#00ffcc]/20 text-[#00ffcc] border border-[#00ffcc] p-4 uppercase tracking-[0.2em] font-bold hover:bg-[#00ffcc] hover:text-black transition-all disabled:opacity-50 relative z-10"
-                        >
-                            {status === 'running' && batchProgress ? 'CALIBRATING...' : 'FULL CALIBRATION RUN >>'}
-                        </button>
+            <div className="grid grid-cols-12 gap-8 relative z-10">
+                {/* Evolution DNA Panel (The "Growth" Visual) */}
+                <div className="col-span-8 space-y-8">
+                    {/* Intelligence DNA Map */}
+                    <div className="bg-white/5 border border-white/10 p-8 rounded-3xl backdrop-blur-2xl relative overflow-hidden group">
+                        <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                            <span className="text-6xl font-black uppercase text-white">DNA</span>
+                        </div>
 
-                        {status === 'running' && batchProgress && (
-                            <button
-                                onClick={handleAbort}
-                                className="w-full mt-3 bg-red-500/20 text-red-400 border border-red-500/50 p-3 uppercase tracking-[0.15em] font-bold text-xs hover:bg-red-500 hover:text-white transition-all relative z-10"
-                            >
-                                ⚠️ ABORT RUN
-                            </button>
-                        )}
-                    </div>
+                        <h2 className="text-sm font-bold uppercase tracking-[0.2em] text-[#00ffcc] mb-8">Intelligence Evolution DNA</h2>
 
-                    {/* Single Year Run */}
-                    <div className="bg-[#0a0a0a] border border-white/10 p-6 rounded relative overflow-hidden">
-                        <h2 className="text-lg mb-4 text-white/80">Single Year: {year}</h2>
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-xs uppercase text-white/50 mb-1">Year</label>
-                                <input
-                                    type="number"
-                                    min="2008"
-                                    max="2025"
-                                    value={year}
-                                    onChange={e => setYear(Number(e.target.value))}
-                                    className="w-full bg-black border border-white/10 text-white text-sm p-3 focus:border-[#00ffcc] outline-none"
-                                />
-                            </div>
-                            <button
-                                onClick={handleRunCycle}
-                                disabled={status === 'running'}
-                                className="w-full bg-white/5 text-white/80 border border-white/20 p-3 uppercase tracking-[0.15em] font-bold text-xs hover:bg-white/10 transition-all disabled:opacity-50"
-                            >
-                                {status === 'running' && !batchProgress ? 'CALIBRATING...' : 'EXECUTE SINGLE CYCLE >>'}
-                            </button>
+                        <div className="h-64 flex items-end gap-3 px-4 mb-4">
+                            {evolutionData.length > 0 ? (
+                                evolutionData.map((iq, i) => (
+                                    <div key={i} className="flex-1 group/bar relative">
+                                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-white text-black text-[10px] font-black px-2 py-1 rounded opacity-0 group-hover/bar:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
+                                            IQ: {(iq.pattern_accuracy * 1.2).toFixed(1)}
+                                        </div>
+                                        <div
+                                            className="w-full bg-gradient-to-t from-[#00ffcc]/40 to-[#00ffcc] rounded-t-lg transition-all duration-700 hover:brightness-125 cursor-help"
+                                            style={{ height: `${iq.pattern_accuracy}%` }}
+                                        />
+                                        <div className="h-1 bg-white/10 w-full mt-2 rounded-full overflow-hidden">
+                                            <div
+                                                className="h-full bg-fuchsia-500 transition-all duration-700"
+                                                style={{ width: `${iq.node_coverage}%` }}
+                                            />
+                                        </div>
+                                    </div>
+                                ))
+                            ) : (
+                                [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(i => (
+                                    <div key={i} className="flex-1 bg-white/5 h-20 rounded-t-lg animate-pulse" />
+                                ))
+                            )}
+                        </div>
+                        <div className="flex justify-between text-[8px] font-bold text-white/20 uppercase tracking-[0.2em]">
+                            <span>Baseline 2008</span>
+                            <span>Recursive Evolution Cycle</span>
+                            <span>Predicted 2026</span>
                         </div>
                     </div>
 
-                    {/* Generate 2026 Sniper List */}
-                    <div className="bg-[#0a0a0a] border border-fuchsia-500/20 p-6 rounded">
-                        <h2 className="text-lg mb-4 text-fuchsia-400">🎯 2026 Sniper List</h2>
-                        <p className="text-white/40 text-xs mb-4">
-                            Generate the final God-Mode prediction list using fully calibrated 2025 weights.
-                        </p>
-                        <button
-                            onClick={handleGenerateSniperList}
-                            disabled={status === 'running'}
-                            className="w-full bg-fuchsia-500/20 text-fuchsia-400 border border-fuchsia-500/50 p-3 uppercase tracking-[0.15em] font-bold hover:bg-fuchsia-500 hover:text-white transition-all disabled:opacity-50"
-                        >
-                            GENERATE 2026 LIST
-                        </button>
+                    {/* Causal Nexus Bento Grid */}
+                    <div className="grid grid-cols-3 gap-6">
+                        <div className="col-span-2 bg-[#0a0a0a] border border-white/10 p-6 rounded-3xl">
+                            <h3 className="text-xs font-black uppercase tracking-widest text-[#00ffcc] mb-4">Daily Pattern Pulse</h3>
+                            <div className="space-y-3 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
+                                {logs.slice(-5).reverse().map((log, i) => (
+                                    <div key={i} className="text-[10px] font-medium text-white/50 py-2 border-b border-white/5 last:border-0 flex items-start gap-3">
+                                        <span className="text-[#00ffcc]/60 font-mono">[{i}]</span>
+                                        <span className="leading-relaxed">{log}</span>
+                                    </div>
+                                ))}
+                                {logs.length === 0 && <div className="text-[10px] text-white/20 italic">Nexus idle... Awaiting initiation.</div>}
+                            </div>
+                        </div>
+
+                        <div className="bg-fuchsia-500/10 border border-fuchsia-500/20 p-6 rounded-3xl flex flex-col justify-between group cursor-pointer hover:bg-fuchsia-500/20 transition-all" onClick={handleGenerateSniperList}>
+                            <div>
+                                <h3 className="text-xs font-black uppercase tracking-widest text-fuchsia-400 mb-2">2026 Sniper</h3>
+                                <p className="text-[9px] text-white/40 leading-relaxed uppercase tracking-wider">Generate God-Mode prediction themes using evolved weights.</p>
+                            </div>
+                            <div className="text-2xl font-black text-fuchsia-400 group-hover:translate-x-2 transition-transform">→</div>
+                        </div>
+
+                        <div className="bg-[#00ffcc]/5 border border-[#00ffcc]/10 p-6 rounded-3xl flex flex-col justify-between group cursor-pointer hover:bg-[#00ffcc]/10 transition-all" onClick={handlePropagatePatterns}>
+                            <div>
+                                <h3 className="text-xs font-black uppercase tracking-widest text-[#00ffcc] mb-2">Neural Ripple</h3>
+                                <p className="text-[9px] text-white/40 leading-relaxed uppercase tracking-wider">Propagate Oracle patterns across the entire Vault via vector similarity.</p>
+                            </div>
+                            <div className="text-2xl font-black text-[#00ffcc] group-hover:translate-x-2 transition-transform">∞</div>
+                        </div>
                     </div>
                 </div>
 
-                {/* Output Terminal */}
-                <div className="flex-1 bg-black border border-white/10 p-6 rounded flex flex-col max-h-[80vh]">
-                    <h2 className="text-sm uppercase text-white/50 mb-4 tracking-widest border-b border-white/5 pb-2">Execution Logs</h2>
-                    <div className="flex-1 overflow-y-auto space-y-1 text-xs text-white/80 font-mono">
-                        {logs.map((log, i) => (
-                            <div key={i}>
-                                <span className={
-                                    log.includes('ERROR') || log.includes('FAILED') ? 'text-red-500' :
-                                        log.includes('SUCCESS') || log.includes('✅') ? 'text-[#00ffcc]' :
-                                            log.includes('═══') ? 'text-fuchsia-400' :
-                                                'text-white/60'
-                                }>&gt; </span>
-                                {log}
+                {/* Command Deck (Controls) */}
+                <div className="col-span-4 space-y-6">
+                    <div className="bg-white/5 border border-white/10 p-8 rounded-[2rem] backdrop-blur-xl relative overflow-hidden">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-[#00ffcc]/10 blur-[60px] rounded-full" />
+
+                        <h2 className="text-sm font-black uppercase tracking-[0.2em] text-white mb-6">Forge Controls</h2>
+
+                        <div className="space-y-6">
+                            <div className="p-4 bg-black/40 rounded-2xl border border-white/5">
+                                <label className="text-[8px] font-black uppercase tracking-[0.3em] text-white/30 block mb-3">Calibration Year</label>
+                                <div className="flex gap-3">
+                                    <input
+                                        type="number"
+                                        value={year}
+                                        onChange={e => setYear(Number(e.target.value))}
+                                        className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm font-black outline-none focus:border-[#00ffcc] transition-all"
+                                    />
+                                    <button
+                                        onClick={handleRunCycle}
+                                        disabled={status === 'running'}
+                                        className="bg-[#00ffcc] text-black font-black text-xs px-6 rounded-xl hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
+                                    >
+                                        RUN
+                                    </button>
+                                </div>
                             </div>
-                        ))}
-                        {logs.length === 0 && <div className="text-white/20 italic">Awaiting initiation sequence...</div>}
+
+                            <button
+                                onClick={handleFullLoop}
+                                disabled={status === 'running'}
+                                className="w-full bg-white text-black font-black py-4 rounded-2xl uppercase tracking-[0.2em] text-[10px] hover:bg-emerald-400 transition-all active:scale-95 disabled:opacity-50"
+                            >
+                                {status === 'running' ? 'Calibrating Intelligence...' : 'Initiate Full Evolution'}
+                            </button>
+
+                            {status === 'running' && (
+                                <button
+                                    onClick={handleAbort}
+                                    className="w-full bg-red-500/10 border border-red-500/20 text-red-500 font-bold py-3 rounded-2xl uppercase tracking-[0.1em] text-[10px] hover:bg-red-500/20 transition-all"
+                                >
+                                    Emergency Halt
+                                </button>
+                            )}
+                        </div>
                     </div>
 
-                    {/* Accuracy Curve */}
-                    {accuracyCurve.length > 0 && (
-                        <div className="mt-6 border-t border-white/10 pt-4">
-                            <h3 className="text-[10px] text-[#00ffcc] uppercase tracking-widest mb-3">Prediction Accuracy Curve</h3>
-                            <div className="flex items-end gap-1 h-20">
-                                {accuracyCurve.map((pt, i) => (
-                                    <div key={i} className="flex flex-col items-center gap-1 flex-1 min-w-0">
-                                        <span className="text-[8px] text-white/40">{pt.accuracy}%</span>
-                                        <div
-                                            className="w-full rounded-sm transition-all"
-                                            style={{
-                                                height: `${pt.accuracy * 0.6}px`,
-                                                backgroundColor: pt.accuracy >= 50 ? '#00ffcc' : '#ef4444',
-                                                minHeight: '4px',
-                                            }}
-                                        />
-                                        <span className="text-[7px] text-white/30">{pt.year.toString().slice(2)}</span>
-                                    </div>
-                                ))}
+                    {/* Meta Indicators */}
+                    <div className="bg-[#0a0a0a] border border-white/10 p-6 rounded-3xl">
+                        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30 mb-6">Logic Evolution Matrix</h3>
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                                <span className="text-[10px] font-bold text-white/60">Conceptual Bias</span>
+                                <span className="text-[#00ffcc] font-mono text-[10px]">{currentCal?.evolvedWeights?.conceptual?.toFixed(2) || '0.75'}</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                                <span className="text-[10px] font-bold text-white/60">Factual Sourcing</span>
+                                <span className="text-[#00ffcc] font-mono text-[10px]">{currentCal?.evolvedWeights?.factual?.toFixed(2) || '0.25'}</span>
+                            </div>
+                            <div className="h-1 bg-white/5 rounded-full mt-4 overflow-hidden flex">
+                                <div className="h-full bg-[#00ffcc]" style={{ width: '75%' }} />
+                                <div className="h-full bg-fuchsia-500" style={{ width: '25%' }} />
                             </div>
                         </div>
-                    )}
-
-                    {/* Cal Output Matrix */}
-                    {currentCal && (
-                        <div className="mt-6 border-t border-white/10 pt-4 space-y-4">
-                            <h3 className="text-xs text-fuchsia-400 uppercase tracking-widest mb-2 flex items-center justify-between">
-                                <span>Latest Cycle Output:</span>
-                                <span className="text-[#00ffcc] bg-[#00ffcc]/10 px-2 py-0.5 rounded">
-                                    Accuracy: {currentCal.matchPercentage}%
-                                </span>
-                            </h3>
-
-                            {currentCal.patternShift && (
-                                <div className="border border-red-500/30 bg-red-500/5 p-3 rounded">
-                                    <h4 className="text-[10px] text-red-400 uppercase tracking-widest mb-1">Detected Pattern Shift</h4>
-                                    <p className="text-white/80 text-xs">{currentCal.patternShift}</p>
-                                </div>
-                            )}
-
-                            <div>
-                                <h4 className="text-[10px] text-white/40 uppercase tracking-widest mb-1">Evolved Logic Weights</h4>
-                                <pre className="text-[10px] text-white/60 bg-white/5 p-3 rounded overflow-x-auto">
-                                    {JSON.stringify(currentCal.evolvedWeights, null, 2)}
-                                </pre>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Sniper List Output */}
-                    {sniperList && (
-                        <div className="mt-6 border-t border-fuchsia-500/20 pt-4 space-y-3">
-                            <h3 className="text-xs text-fuchsia-400 uppercase tracking-widest mb-2">🎯 2026 GOD-MODE THEMES</h3>
-                            {sniperList.godModeThemes?.map((theme: string, i: number) => (
-                                <div key={i} className="bg-fuchsia-500/5 border border-fuchsia-500/20 p-3 rounded flex items-center gap-3">
-                                    <span className="text-fuchsia-400 font-black text-xs w-6">#{i + 1}</span>
-                                    <span className="text-white/90 text-sm">{theme}</span>
-                                </div>
-                            ))}
-                            {sniperList.reasoningText && (
-                                <div className="bg-white/5 p-3 rounded mt-2">
-                                    <h4 className="text-[10px] text-white/40 uppercase tracking-widest mb-1">Reasoning</h4>
-                                    <p className="text-white/70 text-xs leading-relaxed">{sniperList.reasoningText}</p>
-                                </div>
-                            )}
-                        </div>
-                    )}
+                    </div>
                 </div>
             </div>
         </div>

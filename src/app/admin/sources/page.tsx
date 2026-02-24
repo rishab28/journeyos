@@ -10,7 +10,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 
 // You will need to build the fetchPdfSources action
-import { fetchPdfSources, deleteSourceCascade, PdfSource } from '@/app/actions/sourceManagement';
+import { fetchPdfSources, deleteSourceCascade, PdfSource } from '@/app/actions/admin';
 
 export default function SourcesPage() {
     const [sources, setSources] = useState<PdfSource[]>([]);

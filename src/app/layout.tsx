@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Inter, Outfit } from 'next/font/google';
 import './globals.css';
-import ClientShell from '@/components/ClientShell';
+import ClientShell from '@/components/shared/ClientShell';
 import { Toaster } from 'sonner';
 
 const inter = Inter({

@@ -8,7 +8,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSRSStore } from '@/store/srsStore';
-import { evaluateMains, EvalResult } from '@/app/actions/evaluateMains';
+import { evaluateMains, EvalResult } from '@/app/actions/learner';
 import type { StudyCard } from '@/types';
 import Link from 'next/link';
 
