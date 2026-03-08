@@ -83,7 +83,7 @@ export default function StudyFeed({ stories = [] }: StudyFeedProps) {
         cardRefs.current.forEach((ref) => {
             if (ref) observerRef.current?.observe(ref);
         });
-    }, [setCurrentIndex]);
+    }, [setCurrentIndex, incrementSwipeCount]);
 
     // ─── Feed Interaction Trigger (Instagram Style) ───
     useEffect(() => {
@@ -117,9 +117,10 @@ export default function StudyFeed({ stories = [] }: StudyFeedProps) {
 
     if (isLoading) {
         return (
-            <div className="w-full h-screen overflow-hidden bg-black flex flex-col">
+            <div className="w-full h-screen overflow-hidden bg-[#050508] flex flex-col">
                 <div className="w-full h-full flex flex-col items-center justify-center">
-                    <div className="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                    <div className="w-12 h-12 border-2 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin shadow-[0_0_20px_rgba(99,102,241,0.2)]" />
+                    <p className="mt-6 font-caps text-[10px] text-indigo-400 tracking-[0.4em] font-black animate-pulse">SYNCHRONIZING INTEL</p>
                 </div>
             </div>
         );
@@ -128,11 +129,11 @@ export default function StudyFeed({ stories = [] }: StudyFeedProps) {
     return (
         <div
             ref={feedRef}
-            className="study-feed w-full h-full overflow-y-scroll bg-black relative no-scrollbar"
+            className="study-feed w-full h-full overflow-y-scroll bg-[#050508] relative no-scrollbar"
             style={{ scrollSnapType: 'y mandatory', WebkitOverflowScrolling: 'touch', scrollPaddingTop: '60px' }}
         >
             {/* ─── Top Snap Point: Intelligence Pulse (Stories) ─── */}
-            <div className="w-full flex-shrink-0 snap-start bg-black pt-14">
+            <div className="w-full flex-shrink-0 snap-start bg-[#050508] pt-14">
                 <CurrentAffairStories stories={stories} />
 
                 {/* Phase 37: Neural Filter Banner */}
@@ -140,23 +141,23 @@ export default function StudyFeed({ stories = [] }: StudyFeedProps) {
                     <motion.div
                         initial={{ opacity: 0, y: -20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="px-6 mt-6"
+                        className="px-8 mt-8"
                     >
-                        <div className="glass-card rounded-2xl p-4 flex items-center justify-between border-emerald-500/20 bg-emerald-500/[0.02]">
-                            <div className="flex items-center gap-3">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_#10b981]" />
+                        <div className="glass-panel rounded-3xl p-5 flex items-center justify-between border-white/5 bg-indigo-500/[0.03]">
+                            <div className="flex items-center gap-4">
+                                <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse shadow-[0_0_10px_#6366f1]" />
                                 <div>
-                                    <h4 className="text-[10px] font-black text-white/40 uppercase tracking-widest leading-none mb-1">Neural Focus</h4>
-                                    <p className="text-[10px] font-bold text-white uppercase tracking-wider">
+                                    <h4 className="font-caps text-[9px] font-black text-white/30 uppercase tracking-[0.2em] leading-none mb-1.5">NEURAL FOCUS</h4>
+                                    <p className="font-caps text-[11px] font-bold text-white uppercase tracking-[0.1em]">
                                         {useSRSStore.getState().activeSubject} {useSRSStore.getState().activeTopic ? `• ${useSRSStore.getState().activeTopic}` : ''}
                                     </p>
                                 </div>
                             </div>
                             <button
                                 onClick={() => setFilters({ subject: 'Mixed', topic: null, chapter: null })}
-                                className="px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-[9px] font-black text-white hover:bg-white/10 transition-colors uppercase tracking-tighter"
+                                className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 font-caps text-[9px] font-black text-white hover:bg-white/10 transition-all uppercase tracking-widest active:scale-95"
                             >
-                                Reset Sync
+                                RESET SYNC
                             </button>
                         </div>
                     </motion.div>
@@ -164,41 +165,156 @@ export default function StudyFeed({ stories = [] }: StudyFeedProps) {
             </div>
 
             {cards.length === 0 ? (
-                <div className="w-full h-screen flex flex-col items-center justify-center">
-                    <span className="text-4xl mb-4 opacity-50 block">📭</span>
-                    <p className="text-white/40 font-mono text-sm uppercase tracking-widest">No Intel in Sniper Feed</p>
+                <div className="w-full h-screen flex flex-col items-center justify-center p-8 relative z-50">
+                    <div className="absolute inset-0 bg-[#050508] z-0" />
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80vw] h-[80vw] max-w-[500px] max-h-[500px] bg-indigo-500/5 blur-[100px] rounded-full pointer-events-none z-10" />
+
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+                        className="relative z-20 flex flex-col items-center text-center max-w-sm mt-[-10vh]"
+                    >
+                        <div className="w-24 h-24 mb-8 rounded-full border border-white/5 flex items-center justify-center glass-panel shadow-[0_0_50px_rgba(99,102,241,0.1)] relative">
+                            <div className="absolute inset-0 rounded-full border border-indigo-500/20 animate-[spin_4s_linear_infinite]" style={{ borderTopColor: 'transparent', borderBottomColor: 'transparent' }} />
+                            <span className="text-3xl grayscale opacity-70">📭</span>
+                        </div>
+
+                        <h2 className="text-2xl font-bold text-white tracking-tight mb-3">Neural Queue Empty</h2>
+                        <p className="text-[15px] text-white/40 leading-relaxed mb-10 max-w-[280px]">
+                            {useSRSStore.getState().activeSubject !== 'Mixed'
+                                ? "No intel mathing your current filters. Tap below to reset your scope."
+                                : "Your local cache is empty. Pull the latest strategic intel from the master server to begin."}
+                        </p>
+
+                        <button
+                            onClick={async () => {
+                                if (useSRSStore.getState().activeSubject !== 'Mixed') {
+                                    useSRSStore.getState().setFilters({ subject: 'Mixed', topic: null, chapter: null });
+                                } else {
+                                    triggerHaptic('medium');
+                                    useSRSStore.setState({ syncStatus: 'syncing' });
+                                    try {
+                                        const { syncEngine } = await import('@/lib/core/db/syncEngine');
+                                        await syncEngine.pullLatestData();
+                                        await useSRSStore.getState().fetchLiveCards();
+                                    } finally {
+                                        useSRSStore.setState({ syncStatus: 'synced' });
+                                    }
+                                }
+                            }}
+                            className="bg-white text-black px-8 py-4 rounded-2xl font-caps text-[11px] font-black uppercase tracking-[0.2em] shadow-[0_10px_30px_rgba(255,255,255,0.1)] hover:scale-105 active:scale-95 transition-all w-full flex items-center justify-center gap-3"
+                        >
+                            {useSRSStore.getState().syncStatus === 'syncing' ? (
+                                <>
+                                    <span className="w-3 h-3 border-2 border-black/20 border-t-black rounded-full animate-spin" />
+                                    SYNCING DATABANKS...
+                                </>
+                            ) : useSRSStore.getState().activeSubject !== 'Mixed' ? (
+                                "CLEAR FILTERS"
+                            ) : (
+                                "PULL LATEST INTEL"
+                            )}
+                        </button>
+                    </motion.div>
                 </div>
-            ) : cards.map((card, index) => (
-                <div
-                    key={card.id}
-                    ref={(el) => { cardRefs.current[index] = el; }}
-                    data-index={index}
-                    className="w-full h-full flex-shrink-0 snap-start pt-6 bg-black"
-                    style={{ scrollSnapStop: 'always' }}
-                >
-                    <StudyCard
-                        card={card}
-                        isActive={index === activeIndex}
-                        isRapidFire={isRapidFire}
-                        onAnswered={handleNext}
-                    />
-                </div>
-            ))}
+            ) : cards.map((card, index) => {
+                const elements = [];
+
+                // Insert Insight Interstitial every 5 cards
+                if (index > 0 && index % 5 === 0) {
+                    const todayReviewed = useProgressStore.getState().todayReviewed;
+                    const accuracy = useProgressStore.getState().accuracy;
+                    const currentStreak = useProgressStore.getState().currentStreak;
+                    const upscIQ = useProgressStore.getState().upscIQ;
+
+                    elements.push(
+                        <div
+                            key={`insight-${index}`}
+                            className="w-full h-full flex-shrink-0 snap-start bg-[#050508] flex items-center justify-center"
+                            style={{ scrollSnapStop: 'always' }}
+                        >
+                            <div className="w-full max-w-md mx-auto px-8">
+                                <div className="rounded-[40px] glass-panel border border-indigo-500/20 p-10 relative overflow-hidden">
+                                    <div className="absolute -top-20 -right-20 w-48 h-48 bg-indigo-500/10 blur-[80px] rounded-full" />
+                                    <div className="relative z-10">
+                                        <div className="flex items-center gap-3 mb-8">
+                                            <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse shadow-[0_0_10px_#6366f1]" />
+                                            <span className="font-caps text-[10px] text-indigo-400 tracking-[0.3em] font-black uppercase">Session Pulse</span>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-6 mb-8">
+                                            <div className="space-y-1">
+                                                <p className="font-caps text-[9px] text-white/30 tracking-[0.2em]">REVIEWED</p>
+                                                <p className="text-[36px] font-bold text-white tabular-nums leading-none">{todayReviewed}</p>
+                                            </div>
+                                            <div className="space-y-1">
+                                                <p className="font-caps text-[9px] text-white/30 tracking-[0.2em]">ACCURACY</p>
+                                                <p className="text-[36px] font-bold text-white tabular-nums leading-none">{accuracy}<span className="text-lg text-white/20">%</span></p>
+                                            </div>
+                                            <div className="space-y-1">
+                                                <p className="font-caps text-[9px] text-white/30 tracking-[0.2em]">STREAK</p>
+                                                <p className="text-[36px] font-bold text-indigo-400 tabular-nums leading-none">{currentStreak}</p>
+                                            </div>
+                                            <div className="space-y-1">
+                                                <p className="font-caps text-[9px] text-white/30 tracking-[0.2em]">UPSC IQ</p>
+                                                <p className="text-[36px] font-bold text-white tabular-nums leading-none">{upscIQ}</p>
+                                            </div>
+                                        </div>
+
+                                        <div className="h-1.5 rounded-full bg-white/[0.03] overflow-hidden">
+                                            <motion.div
+                                                className="h-full rounded-full bg-gradient-to-r from-indigo-500/40 to-indigo-400"
+                                                initial={{ width: '0%' }}
+                                                animate={{ width: `${Math.min(accuracy, 100)}%` }}
+                                                transition={{ duration: 1.5, ease: [0.16, 1, 0.3, 1] }}
+                                            />
+                                        </div>
+                                        <p className="font-caps text-[9px] text-white/20 tracking-[0.2em] mt-3 text-center">
+                                            KEEP GOING · {cards.length - index} CARDS LEFT
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    );
+                }
+
+                // Regular Study Card
+                elements.push(
+                    <div
+                        key={card.id}
+                        ref={(el) => { cardRefs.current[index] = el; }}
+                        data-index={index}
+                        className="w-full h-full flex-shrink-0 snap-start pt-6 bg-[#050508]"
+                        style={{ scrollSnapStop: 'always' }}
+                    >
+                        <StudyCard
+                            card={card}
+                            isActive={index === activeIndex}
+                            isRapidFire={isRapidFire}
+                            onAnswered={handleNext}
+                        />
+                    </div>
+                );
+
+                return elements;
+            })}
 
             {/* ─── End Card ─── */}
             <div
                 className="w-full h-screen flex-shrink-0 flex items-center justify-center"
                 style={{ scrollSnapAlign: 'start' }}
             >
-                <div className="text-center px-8">
-                    <div className="text-5xl mb-5">🎉</div>
-                    <h2 className="text-xl font-bold text-white/90 mb-2 font-outfit">Session Complete</h2>
-                    <p className="text-white/40 text-sm mb-8 max-w-xs mx-auto">You've mastered this batch.</p>
+                <div className="text-center px-10">
+                    <div className="text-6xl mb-8 grayscale">🎉</div>
+                    <h2 className="text-2xl font-bold text-white mb-3 font-outfit tracking-tight">Session Complete</h2>
+                    <p className="font-caps text-[10px] text-white/30 tracking-[0.2em] mb-10 max-w-[240px] mx-auto uppercase">NEURAL BATCH MASTERED SUCCESSFULLY</p>
                     <button
                         onClick={() => {
                             feedRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
                         }}
-                        className="px-8 py-3.5 rounded-2xl bg-white text-black text-sm font-bold active:scale-95 transition-transform"
+                        className="px-10 py-4 rounded-2xl bg-white text-black text-[12px] font-black uppercase tracking-widest active:scale-95 transition-all shadow-[0_0_30px_rgba(255,255,255,0.2)] hover:shadow-[0_0_40px_rgba(255,255,255,0.4)]"
                     >
                         Review Again
                     </button>

@@ -50,7 +50,7 @@ export default function DiscoveryGrid({ cards, onCardClick }: DiscoveryGridProps
                                 <div className="flex flex-col gap-1">
                                     <div className="flex items-center gap-2">
                                         <span className={`w-1.5 h-1.5 rounded-full ${card.difficulty === 'HARD' ? 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.5)]' :
-                                            card.difficulty === 'MEDIUM' ? 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]' : 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]'
+                                            card.difficulty === 'MEDIUM' ? 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]' : 'bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]'
                                             }`} />
                                         <span className="text-[10px] font-black text-white/30 uppercase tracking-[0.15em]">{card.subject}</span>
                                     </div>

@@ -18,6 +18,7 @@ export interface PdfSource {
     subject?: string;
     displayName?: string;
     isProcessed?: boolean;
+    sourceType?: string; // TEXTBOOK, PYQ_PAPER, NOTIFICATION, NEWS, NOTES, CURRENT_AFFAIRS
 }
 
 export async function fetchPdfSources(): Promise<{ success: boolean; data?: PdfSource[]; error?: string }> {
@@ -90,7 +91,8 @@ export async function fetchPdfSources(): Promise<{ success: boolean; data?: PdfS
                 domain: meta.domain || 'GS',
                 subject: meta.subject || '',
                 displayName: meta.display_name || file.name,
-                isProcessed: meta.is_processed || false
+                isProcessed: meta.is_processed || false,
+                sourceType: meta.source_type || 'TEXTBOOK'
             };
         });
 
@@ -160,7 +162,7 @@ export async function deleteSourceCascade(filename: string): Promise<{ success: 
 
 export async function registerSource(
     filename: string,
-    metadata: { display_name: string; domain: string; subject: string; folder_name?: string }
+    metadata: { display_name: string; domain: string; subject: string; folder_name?: string; source_type?: string }
 ): Promise<{ success: boolean; error?: string }> {
     try {
         const supabase = await createServerSupabaseClient();

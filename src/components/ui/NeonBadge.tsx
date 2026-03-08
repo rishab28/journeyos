@@ -13,21 +13,21 @@ export const NeonBadge = React.memo(React.forwardRef<HTMLDivElement, NeonBadgePr
         const baseStyle = "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium border backdrop-blur-md transition-colors";
 
         const variants = {
-            emerald: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
-            amber: "bg-amber-500/10 text-amber-400 border-amber-500/20",
-            blue: "bg-blue-500/10 text-blue-400 border-blue-500/20",
+            emerald: "bg-indigo-500/10 text-indigo-400 border-indigo-500/20",
+            amber: "bg-white/5 text-slate-400 border-white/10",
+            blue: "bg-indigo-500/10 text-indigo-400 border-indigo-500/20",
             purple: "bg-purple-500/10 text-purple-400 border-purple-500/20",
             rose: "bg-rose-500/10 text-rose-400 border-rose-500/20",
             slate: "bg-slate-500/10 text-slate-400 border-slate-500/20"
         };
 
         const glowVariants = {
-            emerald: "shadow-[0_0_15px_rgba(16,185,129,0.15)]",
-            amber: "shadow-[0_0_15px_rgba(245,158,11,0.15)]",
-            blue: "shadow-[0_0_15px_rgba(59,130,246,0.15)]",
-            purple: "shadow-[0_0_15px_rgba(168,85,247,0.15)]",
-            rose: "shadow-[0_0_15px_rgba(244,63,94,0.15)]",
-            slate: "shadow-[0_0_15px_rgba(100,116,139,0.15)]"
+            emerald: "shadow-[0_0_15px_rgba(99,102,241,0.1)]",
+            amber: "shadow-none",
+            blue: "shadow-[0_0_15px_rgba(99,102,241,0.1)]",
+            purple: "shadow-[0_0_15px_rgba(168,85,247,0.1)]",
+            rose: "shadow-[0_0_15px_rgba(244,63,94,0.1)]",
+            slate: "shadow-[0_0_15px_rgba(100,116,139,0.1)]"
         };
 
         if (pulse) {

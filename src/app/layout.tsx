@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { Inter, Outfit } from 'next/font/google';
+import { Inter, Outfit, Playfair_Display } from 'next/font/google';
 import './globals.css';
 import ClientShell from '@/components/shared/ClientShell';
 import { Toaster } from 'sonner';
@@ -12,6 +12,12 @@ const inter = Inter({
 
 const outfit = Outfit({
   variable: '--font-outfit',
+  subsets: ['latin'],
+  display: 'swap',
+});
+
+const playfair = Playfair_Display({
+  variable: '--font-playfair',
   subsets: ['latin'],
   display: 'swap',
 });
@@ -52,10 +58,24 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body
-        className={`${inter.variable} ${outfit.variable} font-sans antialiased bg-[#0a0a0f] text-white overflow-hidden`}
+        className={`${inter.variable} ${outfit.variable} ${playfair.variable} font-sans antialiased bg-obsidian text-white overflow-hidden selection:bg-indigo-500/30`}
       >
+        <div className="noise-overlay" />
+        <div className="neural-bg">
+          <div className="neural-orb orb-indigo" />
+          <div className="neural-orb orb-mauve" />
+        </div>
         <ClientShell>{children}</ClientShell>
-        <Toaster theme="dark" position="bottom-center" toastOptions={{ style: { background: 'rgba(0,0,0,0.8)', border: '1px solid rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)', color: 'white' } }} />
+        <Toaster theme="dark" position="bottom-center" toastOptions={{
+          style: {
+            background: 'rgba(10,10,12,0.85)',
+            border: '1px solid rgba(255,255,255,0.08)',
+            backdropFilter: 'blur(32px)',
+            color: 'white',
+            borderRadius: '24px',
+            boxShadow: '0 20px 50px rgba(0,0,0,0.5)'
+          }
+        }} />
       </body>
     </html>
   );

@@ -5,7 +5,7 @@
 // PDF text → chunk → multiple Gemini calls → Live cards
 // ═══════════════════════════════════════════════════════════
 
-import { extractCardsFromText, generateEmbedding } from '@/lib/core/ai/gemini';
+import { extractCardsFromText, generateEmbedding, verifyFacts } from '@/lib/core/ai/gemini';
 import { neuralGateway } from '@/lib/core/ai/neuralGateway';
 import { createServerSupabaseClient } from '@/lib/core/supabase/server';
 import { createClient } from '@supabase/supabase-js';
@@ -29,7 +29,7 @@ async function validateCardsQuality(cards: any[]): Promise<{ score: number, reas
 
     try {
         const result = await neuralGateway.generateContent({
-            model: 'gemini-2.5-flash',
+            model: 'gemini-2.0-flash',
             systemPrompt: "You are the UPSC Quality Assurance Engine. Strictly return a valid JSON array.",
             userPrompt,
             temperature: 0.1,
@@ -58,6 +58,7 @@ interface IngestInput {
     sourcePdf?: string;
     interestProfile?: string;
     upscIQ?: number;
+    sourceType?: string; // TEXTBOOK, PYQ_PAPER, NOTIFICATION, NEWS, NOTES, CURRENT_AFFAIRS
     oracleContext?: {
         predictedThemes: string[];
         learnedLogic: any;
@@ -68,28 +69,34 @@ interface IngestInput {
 
 export async function ingestText(input: IngestInput): Promise<IngestResult> {
     try {
-        const { text, domain, subject, topic, examTags, sourcePdf, interestProfile, upscIQ } = input;
+        const { text, domain, subject, topic, examTags, sourcePdf, interestProfile, upscIQ, sourceType } = input;
         const supabase = await createServerSupabaseClient();
 
         // ── Phase 11: Neural Link (Fetch Oracle Context) ──
+        // Skip Oracle context for non-applicable source types
+        const skipOracle = sourceType === 'NOTIFICATION' || sourceType === 'NEWS';
         let oracleContext = undefined;
-        try {
-            const { data: latestCal } = await supabase
-                .from('oracle_calibrations')
-                .select('predicted_themes, learned_logic_weights')
-                .order('year', { ascending: false })
-                .limit(1)
-                .single();
+        if (!skipOracle) {
+            try {
+                const { data: latestCal } = await supabase
+                    .from('oracle_calibrations')
+                    .select('predicted_themes, learned_logic_weights')
+                    .order('year', { ascending: false })
+                    .limit(1)
+                    .single();
 
-            if (latestCal) {
-                oracleContext = {
-                    predictedThemes: latestCal.predicted_themes || [],
-                    learnedLogic: latestCal.learned_logic_weights || {}
-                };
-                console.log(`[Ingestor] Oracle Link Active: ${oracleContext.predictedThemes.length} themes synced.`);
+                if (latestCal) {
+                    oracleContext = {
+                        predictedThemes: latestCal.predicted_themes || [],
+                        learnedLogic: latestCal.learned_logic_weights || {}
+                    };
+                    console.log(`[Ingestor] Oracle Link Active: ${oracleContext.predictedThemes.length} themes synced.`);
+                }
+            } catch (e) {
+                console.warn('[Ingestor] Oracle context not found, proceeding with baseline logic.');
             }
-        } catch (e) {
-            console.warn('[Ingestor] Oracle context not found, proceeding with baseline logic.');
+        } else {
+            console.log(`[Ingestor] Skipping Oracle context for source type: ${sourceType}`);
         }
         if (!text || text.trim().length < 50) {
             return { success: false, cardsCreated: 0, cards: [], errors: ['Text too short or empty (min 50 chars)'] };
@@ -123,7 +130,8 @@ export async function ingestText(input: IngestInput): Promise<IngestResult> {
                 [],
                 interestProfile,
                 upscIQ,
-                oracleContext
+                oracleContext,
+                sourceType || 'TEXTBOOK'
             );
 
             if (result.error) {
@@ -154,10 +162,14 @@ export async function ingestText(input: IngestInput): Promise<IngestResult> {
         console.log(`[Ingestor] Running automated QA on ${allCards.length} cards...`);
         const qaResults = await validateCardsQuality(allCards);
 
+        // ── Phase 40: Truth-First Fact-Check ──
+        console.log(`[Ingestor] Running Fact-Check Agent on ${allCards.length} cards...`);
+        const factCheckedCards = await verifyFacts(allCards, processedText);
+
         // ── Generate Embeddings for all cards ──
-        console.log(`[Ingestor] Generating embeddings for ${allCards.length} cards...`);
+        console.log(`[Ingestor] Generating embeddings for ${factCheckedCards.length} cards...`);
         const cardsWithEmbeddings = [];
-        for (const card of allCards) {
+        for (const card of factCheckedCards) {
             const textToEmbed = `Front: ${card.front}\nBack: ${card.back}\nExplanation: ${card.explanation || ''}\nTrick: ${card.topperTrick || card.eliminationTrick || ''}\nSubject: ${subject}\nTopic: ${topic}`;
             try {
                 const embedding = await generateEmbedding(textToEmbed);
@@ -169,14 +181,13 @@ export async function ingestText(input: IngestInput): Promise<IngestResult> {
         }
 
         // ── Insert ALL cards into Supabase as LIVE ──
-        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-        const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+        const serviceClient = supabase; // Reusing the DNS-proof server client created earlier
 
-        const serviceClient = createClient(supabaseUrl, supabaseKey);
         const cardsToInsert = cardsWithEmbeddings.map((card, idx) => {
             const qa = qaResults[idx] || { score: 85, reason: "QA Error" };
             const status = qa.score >= 60 ? 'pending_review' : 'rejected';
-            const qaBadge = `\n\n[⚙️ AI Auto-QA: ${qa.score}/100 - ${qa.reason}]`;
+            const factCheckStatus = card.isFactChecked ? ' [✅ Fact-Checked]' : ' [⚠️ Verification Failed]';
+            const qaBadge = `\n\n[⚙️ AI Auto-QA: ${qa.score}/100 - ${qa.reason}]${factCheckStatus}`;
 
             const sanitizedCardData = {
                 type: card.type || 'FLASHCARD',
@@ -208,6 +219,8 @@ export async function ingestText(input: IngestInput): Promise<IngestResult> {
                 priority_score: card.priorityScore ?? 5,
                 scaffold_level: card.scaffoldLevel || 'Foundation',
                 custom_analogy: card.customAnalogy || null,
+                topic_map: card.topicMap || null,
+                translations: card.translations || {},
             };
             return sanitizedCardData;
         });

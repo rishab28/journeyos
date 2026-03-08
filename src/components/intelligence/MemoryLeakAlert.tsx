@@ -31,10 +31,10 @@ export default function MemoryLeakAlert() {
                         animate={{ width: '0%' }}
                         transition={{ duration: 180, ease: 'linear' }}
                         onAnimationComplete={() => setIsBreathingMode(false)}
-                        className="h-full bg-cyan-500"
+                        className="h-full bg-indigo-500"
                     />
                 </div>
-                <p className="text-[10px] text-cyan-500/50 mt-3 font-bold tracking-[0.3em] uppercase relative z-10 animate-pulse">
+                <p className="text-[10px] text-indigo-500/50 mt-3 font-bold tracking-[0.3em] uppercase relative z-10 animate-pulse">
                     Breathe
                 </p>
             </div>
@@ -47,10 +47,10 @@ export default function MemoryLeakAlert() {
 
     if (leakingCards.length === 0) {
         return (
-            <div className="flex items-center gap-3 p-3 rounded-2xl bg-emerald-500/[0.05] border border-emerald-500/10">
-                <div className="w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center text-sm">🛡️</div>
+            <div className="flex items-center gap-3 p-3 rounded-2xl bg-indigo-500/[0.05] border border-indigo-500/10">
+                <div className="w-8 h-8 rounded-full bg-indigo-500/10 flex items-center justify-center text-sm">🛡️</div>
                 <div>
-                    <p className="text-xs font-bold text-emerald-400">Zero Weak-Links</p>
+                    <p className="text-xs font-bold text-indigo-400">Zero Weak-Links</p>
                     <p className="text-[10px] text-white/40">You have no concepts in the Death-Zone.</p>
                 </div>
             </div>

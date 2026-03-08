@@ -55,102 +55,64 @@ export async function getActiveStories(): Promise<{ success: boolean; stories: C
         const supabase = await createServerSupabaseClient();
         const now = new Date().toISOString();
 
-        console.log(`[getActiveStories] Fetching stories at ${now}`);
+        console.log(`[getActiveStories] Initiating optimized fetch at ${now}`);
 
-        // 1. Fetch from legacy 'stories' table
-        const { data: legacyData, error: legacyError } = await supabase
-            .from('stories')
-            .select(`
-                *,
-                mcqCard:cards(*)
-            `)
-            .gt('expires_at', now)
-            .order('created_at', { ascending: false });
+        // 1. Parallel Fetch for Speed (Decoupled)
+        const [legacyRes, dailyRes] = await Promise.all([
+            supabase
+                .from('stories')
+                .select('id, subject, content, mcq_id, expires_at, created_at')
+                .gt('expires_at', now)
+                .order('created_at', { ascending: false }),
+            supabase
+                .from('daily_stories')
+                .select('*')
+                .gt('expires_at', now)
+                .order('created_at', { ascending: false })
+        ]);
 
-        if (legacyError) console.warn('[getActiveStories] Legacy Table Error:', legacyError.message);
-        console.log(`[getActiveStories] Legacy stories found: ${legacyData?.length || 0}`);
+        if (legacyRes.error) console.error('[getActiveStories] Legacy Table Error:', legacyRes.error.message);
+        if (dailyRes.error) console.error('[getActiveStories] Daily Table Error:', dailyRes.error.message);
 
-        // 2. Fetch from new 'daily_stories' table (Surgical News Engine)
-        const { data: dailyData, error: dailyError } = await supabase
-            .from('daily_stories')
-            .select('*')
-            .gt('expires_at', now)
-            .order('created_at', { ascending: false });
+        // 2. Fast Mapping (No nested joins)
+        const parsedLegacy: CurrentAffairStory[] = (legacyRes.data || []).map(row => ({
+            id: row.id,
+            subject: row.subject as Subject,
+            content: Array.isArray(row.content) ? row.content : [],
+            mcqId: row.mcq_id || undefined,
+            expiresAt: row.expires_at,
+            createdAt: row.created_at
+        }));
 
-        if (dailyError) console.warn('[getActiveStories] Daily Table Error:', dailyError.message);
-        console.log(`[getActiveStories] Daily stories found: ${dailyData?.length || 0}`);
+        const parsedDaily: CurrentAffairStory[] = (dailyRes.data || []).map(row => ({
+            id: row.id,
+            subject: row.subject as Subject,
+            title: row.title,
+            summary: Array.isArray(row.summary) ? row.summary : [],
+            syllabusTopic: row.syllabus_topic,
+            mainsFodder: row.mains_fodder,
+            sourceUrl: row.source_url || undefined,
+            sourceName: row.metadata?.source || undefined,
+            expiresAt: row.expires_at,
+            createdAt: row.created_at || new Date().toISOString(),
+            cardId: row.card_id || undefined,
+            content: [row.title] // Component fallback
+        }));
 
-        // 3. Map legacy stories
-        const parsedLegacy: CurrentAffairStory[] = (legacyData || []).map(row => {
-            let parsedMcq: StudyCard | undefined;
-            if (row.mcqCard) {
-                const dbCard = row.mcqCard;
-                parsedMcq = {
-                    id: dbCard.id,
-                    type: dbCard.type as StudyCard['type'],
-                    domain: dbCard.domain as StudyCard['domain'],
-                    subject: dbCard.subject as StudyCard['subject'],
-                    topic: dbCard.topic,
-                    subTopic: dbCard.sub_topic || undefined,
-                    difficulty: dbCard.difficulty as StudyCard['difficulty'],
-                    examTags: dbCard.exam_tags,
-                    status: dbCard.status as StudyCard['status'],
-                    front: dbCard.front,
-                    back: dbCard.back,
-                    options: dbCard.options || undefined,
-                    srs: {
-                        easeFactor: dbCard.ease_factor,
-                        interval: dbCard.interval,
-                        repetitions: dbCard.repetitions,
-                        nextReviewDate: dbCard.next_review_date,
-                    },
-                    createdAt: dbCard.created_at,
-                    updatedAt: dbCard.updated_at,
-                } as StudyCard;
-            }
-
-            return {
-                id: row.id,
-                subject: row.subject as Subject,
-                content: Array.isArray(row.content) ? row.content : [],
-                mcqId: row.mcq_id || undefined,
-                expiresAt: row.expires_at,
-                createdAt: row.created_at,
-                mcqCard: parsedMcq
-            };
-        });
-
-        // 4. Map daily stories (Surgical Format)
-        const parsedDaily: CurrentAffairStory[] = (dailyData || []).map(row => {
-            const content = [row.title, ...(Array.isArray(row.summary) ? row.summary : [])];
-
-            return {
-                id: row.id,
-                subject: row.subject as Subject,
-                title: row.title,
-                content,
-                syllabusTopic: row.syllabus_topic,
-                mainsFodder: row.mains_fodder,
-                expiresAt: row.expires_at,
-                createdAt: row.created_at
-            };
-        });
-
-        // Merge and sort
-        let allStories = [...parsedDaily, ...parsedLegacy].sort((a, b) =>
+        const allStories = [...parsedDaily, ...parsedLegacy].sort((a, b) =>
             new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
         );
 
-        // Demo Fallback if empty
         if (allStories.length === 0) {
-            console.log('[getActiveStories] No active stories found in DB. Injecting demo fallback.');
-            allStories = DEMO_STORIES;
+            console.log('[getActiveStories] No active stories found. Providing Demo Fallback.');
+            return { success: true, stories: DEMO_STORIES };
         }
 
+        console.log(`[getActiveStories] Success: Resolved ${allStories.length} stories.`);
         return { success: true, stories: allStories };
 
     } catch (err: any) {
-        console.error('[getActiveStories] Exception:', err);
+        console.error('[getActiveStories] Critical Failure:', err);
         return { success: false, stories: [], error: err.message || 'Failed to fetch stories.' };
     }
 }

@@ -39,7 +39,7 @@ export default function MissionBriefPanel({ isOpen, onClose, briefing, nodeName,
                         {/* Header */}
                         <div className="p-8 border-b border-white/5 bg-[#0D0D0D]">
                             <div className="flex justify-between items-center mb-4">
-                                <span className="text-[10px] text-[#00ffcc] font-black uppercase tracking-[0.3em] bg-[#00ffcc]/10 px-3 py-1 rounded-full">
+                                <span className="text-[10px] text-indigo-400 font-black uppercase tracking-[0.3em] bg-indigo-500/10 px-3 py-1 rounded-full">
                                     Mission Briefing
                                 </span>
                                 <button onClick={onClose} className="text-white/40 hover:text-white transition-colors">
@@ -66,12 +66,12 @@ export default function MissionBriefPanel({ isOpen, onClose, briefing, nodeName,
                                 <h3 className="text-[10px] text-white/30 uppercase tracking-widest font-bold">Causal Connections ({connections.length})</h3>
                                 <div className="space-y-3">
                                     {connections.map((conn, i) => (
-                                        <div key={i} className="p-4 rounded-2xl bg-white/[0.03] border border-white/5 flex items-center justify-between group hover:border-[#00ffcc]/30 transition-all">
+                                        <div key={i} className="p-4 rounded-2xl bg-white/[0.03] border border-white/5 flex items-center justify-between group hover:border-indigo-500/30 transition-all">
                                             <div>
                                                 <div className="text-xs font-bold text-white/90 mb-1">Source Node {i + 1}</div>
                                                 <div className="text-[10px] text-white/30 uppercase tracking-tighter">{conn.type} link</div>
                                             </div>
-                                            <div className="text-[10px] font-black text-[#00ffcc] group-hover:scale-110 transition-transform">
+                                            <div className="text-[10px] font-black text-indigo-400 group-hover:scale-110 transition-transform">
                                                 {Math.round(conn.strength * 100)}%
                                             </div>
                                         </div>
@@ -85,7 +85,7 @@ export default function MissionBriefPanel({ isOpen, onClose, briefing, nodeName,
 
                         {/* Footer Action */}
                         <div className="p-8 border-t border-white/5 bg-[#0D0D0D]">
-                            <button className="w-full py-4 rounded-2xl bg-[#00ffcc] text-black font-black uppercase tracking-widest shadow-[0_0_20px_rgba(0,255,204,0.3)] hover:scale-[1.02] active:scale-[0.98] transition-all">
+                            <button className="w-full py-4 rounded-2xl bg-indigo-500 text-white font-black uppercase tracking-widest shadow-[0_0_20px_rgba(99,102,241,0.3)] hover:scale-[1.02] active:scale-[0.98] transition-all">
                                 Deploy Strategic Flashcards
                             </button>
                         </div>

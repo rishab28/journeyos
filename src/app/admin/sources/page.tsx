@@ -82,8 +82,8 @@ export default function SourcesPage() {
                     <p className="text-sm text-white/40 mt-1">Manage uploaded PDFs and their generated neural flashcards.</p>
                 </div>
                 <Link href="/admin/ingest">
-                    <button className="px-4 py-2 bg-violet-600/20 text-violet-400 border border-violet-500/30 rounded-xl text-sm font-bold hover:bg-violet-600/30 transition-colors">
-                        + New Ingest
+                    <button className="px-6 py-2.5 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-500 transition-all shadow-lg shadow-indigo-500/20">
+                        Execute Ingest
                     </button>
                 </Link>
             </div>
@@ -137,15 +137,15 @@ export default function SourcesPage() {
                                 </div>
 
                                 <div className="flex items-center gap-3 w-full sm:w-auto">
-                                    <div className="flex-1 sm:flex-none px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-center">
-                                        <p className="text-[10px] text-emerald-400/60 font-bold uppercase tracking-wider mb-0.5">Cards Generated</p>
-                                        <p className="text-lg font-black text-emerald-400">{source.cardCount}</p>
+                                    <div className="flex-1 sm:flex-none px-6 py-3 bg-white/5 border border-white/10 rounded-2xl text-center">
+                                        <p className="text-[8px] text-white/20 font-black uppercase tracking-[0.2em] mb-1">Nodes Generated</p>
+                                        <p className="text-xl font-black text-white">{source.cardCount}</p>
                                     </div>
 
                                     <div className="flex gap-2">
                                         <button
                                             onClick={() => handleDelete(source.id)}
-                                            className="p-3 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 rounded-xl transition-colors" title="Delete Source & Cards"
+                                            className="p-3 bg-white/5 hover:bg-white/10 text-white/40 hover:text-white border border-white/10 rounded-xl transition-colors" title="Delete Source & Cards"
                                         >
                                             🗑️
                                         </button>

@@ -1,236 +1,192 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { fetchPdfSources, deleteSourceCascade, updateSourceMetadata, PdfSource } from '@/app/actions/admin';
+// ═══════════════════════════════════════════════════════════
+// JourneyOS — Admin Intel Vault Browser
+// Surgical Content Management & Repository Oversight
+// ═══════════════════════════════════════════════════════════
 
-export default function IntelligenceVault() {
-    const [sources, setSources] = useState<PdfSource[]>([]);
+import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+    Search,
+    Filter,
+    Edit3,
+    Trash2,
+    CheckCircle2,
+    Eye,
+    Database,
+    Tag,
+    AlertCircle,
+    ChevronLeft,
+    ChevronRight,
+    Save,
+    X
+} from 'lucide-react';
+import { browseCards, updateVaultCard, deleteVaultCard } from '@/app/actions/admin';
+import { StudyCard, CardStatus, Subject, CardType } from '@/types';
+
+export default function VaultBrowserPage() {
+    const [cards, setCards] = useState<StudyCard[]>([]);
+    const [total, setTotal] = useState(0);
+    const [page, setPage] = useState(1);
+    const [search, setSearch] = useState('');
+    const [subject, setSubject] = useState<Subject | ''>('');
+    const [status, setStatus] = useState<CardStatus | ''>('');
     const [isLoading, setIsLoading] = useState(true);
-    const [searchQuery, setSearchQuery] = useState('');
-    const [selectedFolder, setSelectedFolder] = useState<string | 'All'>('All');
-    const [deletingId, setDeletingId] = useState<string | null>(null);
+    const [editingCard, setEditingCard] = useState<StudyCard | null>(null);
 
     useEffect(() => {
-        loadSources();
-    }, []);
+        loadCards();
+    }, [page, subject, status]);
 
-    const loadSources = async () => {
+    const loadCards = async () => {
         setIsLoading(true);
-        const res = await fetchPdfSources();
+        const res = await browseCards({
+            query: search,
+            subject: subject || undefined,
+            status: status || undefined,
+            page,
+            limit: 20
+        });
         if (res.success && res.data) {
-            setSources(res.data);
+            setCards(res.data);
+            setTotal(res.total);
         }
         setIsLoading(false);
     };
 
-    const folders = useMemo(() => {
-        const unique = Array.from(new Set(sources.map(s => s.folder || 'Uncategorized')));
-        return ['All', ...unique];
-    }, [sources]);
-
-    const filteredSources = useMemo(() => {
-        return sources.filter(s => {
-            const matchesSearch = s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                s.displayName?.toLowerCase().includes(searchQuery.toLowerCase());
-            const matchesFolder = selectedFolder === 'All' || s.folder === selectedFolder;
-            return matchesSearch && matchesFolder;
-        });
-    }, [sources, searchQuery, selectedFolder]);
-
-    const handleDelete = async (filename: string) => {
-        if (!confirm('Are you absolutely sure? This will delete the PDF and ALL associated flashcards permanently.')) return;
-        setDeletingId(filename);
-        const res = await deleteSourceCascade(filename);
-        if (res.success) {
-            setSources(prev => prev.filter(s => s.id !== filename));
-        } else {
-            alert(`Error: ${res.error}`);
-        }
-        setDeletingId(null);
+    const handleSearch = (e: React.FormEvent) => {
+        e.preventDefault();
+        setPage(1);
+        loadCards();
     };
 
-    const handleMoveToFolder = async (filename: string, folderName: string) => {
-        const res = await updateSourceMetadata(filename, { folder_name: folderName });
+    const handleSaveEdit = async () => {
+        if (!editingCard) return;
+        const res = await updateVaultCard(editingCard.id, editingCard);
         if (res.success) {
-            setSources(prev => prev.map(s => s.id === filename ? { ...s, folder: folderName } : s));
+            setCards(cards.map(c => c.id === editingCard.id ? editingCard : c));
+            setEditingCard(null);
         }
     };
 
-    const formatSize = (bytes: number) => {
-        if (bytes === 0) return '0 B';
-        const k = 1024;
-        const sizes = ['B', 'KB', 'MB', 'GB'];
-        const i = Math.floor(Math.log(bytes) / Math.log(k));
-        return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+    const handleDelete = async (id: string) => {
+        if (!confirm('Are you sure you want to purge this intelligence node?')) return;
+        const res = await deleteVaultCard(id);
+        if (res.success) {
+            setCards(cards.filter(c => c.id !== id));
+            setTotal(total - 1);
+        }
     };
 
     return (
-        <div className="min-h-screen bg-[#050505] text-white p-6 md:p-12 relative overflow-hidden">
-            {/* 🎨 Luxury Background Elements */}
-            <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-emerald-500/5 rounded-full blur-[120px] pointer-events-none" />
-            <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-500/5 rounded-full blur-[120px] pointer-events-none" />
-
-            {/* Header Section */}
-            <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-8 mb-20">
-                <motion.div
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                >
-                    <div className="flex items-center gap-4 mb-3">
-                        <div className="w-1 h-12 bg-gradient-to-b from-emerald-500 to-transparent rounded-full" />
-                        <div>
-                            <h1 className="text-4xl md:text-5xl font-black tracking-tighter uppercase mb-1">Intelligence Vault</h1>
-                            <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.5em]">Strategic Asset Management • Bio-Sync v2.0</p>
-                        </div>
+        <div className="min-h-screen">
+            <header className="mb-10">
+                <div className="flex items-center gap-3 mb-4">
+                    <span className="px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-white/40 text-[9px] font-black uppercase tracking-[0.2em]">Repository Control</span>
+                    <h2 className="text-white/40 text-xs font-black uppercase tracking-widest">Global Intelligence Vault</h2>
+                </div>
+                <div className="flex justify-between items-end">
+                    <h1 className="text-4xl font-black uppercase tracking-tighter">Intel <span className="text-white/20">Browser</span></h1>
+                    <div className="text-right">
+                        <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em]">Nodes Indexed</p>
+                        <p className="text-xl font-black text-white">{total.toLocaleString()}</p>
                     </div>
-                </motion.div>
+                </div>
+            </header>
 
-                <motion.div
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="flex items-center gap-1 bg-white/5 p-1 rounded-[2rem] border border-white/10 backdrop-blur-3xl"
-                >
-                    <div className="px-8 py-4 text-center">
-                        <p className="text-[8px] font-black text-white/20 uppercase tracking-[0.3em] mb-1">Total Assets</p>
-                        <p className="text-2xl font-black font-outfit">{sources.length}</p>
-                    </div>
-                    <div className="w-px h-10 bg-white/10" />
-                    <div className="px-8 py-4 text-center">
-                        <p className="text-[8px] font-black text-white/20 uppercase tracking-[0.3em] mb-1">Knowledge Yield</p>
-                        <p className="text-2xl font-black font-outfit text-[#00ffcc]">{sources.reduce((acc, s) => acc + s.cardCount, 0)}</p>
-                    </div>
-                </motion.div>
-            </div>
-
-            {/* Controls Deck */}
-            <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-6 mb-16">
-                <div className="lg:col-span-5 relative group">
+            {/* Tactical Search & Filters */}
+            <div className="bg-[#0c0c0c] border border-white/10 rounded-3xl p-6 mb-8 flex flex-col md:flex-row gap-6">
+                <form onSubmit={handleSearch} className="flex-1 relative">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20" size={16} />
                     <input
                         type="text"
-                        placeholder="Scan for Intel..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full bg-white/[0.03] border border-white/5 rounded-[1.5rem] px-8 py-5 text-sm font-bold placeholder:text-white/10 focus:outline-none focus:border-white/20 transition-all focus:bg-white/[0.05]"
+                        placeholder="Search front, back, or topic..."
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        className="w-full bg-white/5 border border-white/5 rounded-2xl py-4 pl-12 pr-4 text-sm focus:outline-none focus:border-indigo-500/50 transition-colors"
                     />
-                    <div className="absolute right-6 top-1/2 -translate-y-1/2 text-white/20 group-hover:text-white/40 transition-colors">🔍</div>
-                </div>
-
-                <div className="lg:col-span-7 flex gap-3 overflow-x-auto pb-4 scrollbar-none">
-                    {folders.map(folder => (
-                        <button
-                            key={folder}
-                            onClick={() => setSelectedFolder(folder)}
-                            className={`px-8 py-5 rounded-[1.5rem] text-[9px] font-black uppercase tracking-[0.3em] transition-all whitespace-nowrap border ${selectedFolder === folder
-                                ? 'bg-white text-black border-white shadow-[0_0_30px_rgba(255,255,255,0.1)]'
-                                : 'bg-white/[0.03] text-white/30 border-white/5 hover:border-white/20 hover:text-white'
-                                }`}
-                        >
-                            {folder}
-                        </button>
-                    ))}
+                </form>
+                <div className="flex gap-4">
+                    <select
+                        value={subject}
+                        onChange={(e) => setSubject(e.target.value as Subject)}
+                        className="bg-white/5 border border-white/5 rounded-2xl px-6 py-4 text-[10px] font-black uppercase tracking-widest focus:outline-none focus:border-emerald-500/50"
+                    >
+                        <option value="">All Subjects</option>
+                        {Object.values(Subject).map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                    <select
+                        value={status}
+                        onChange={(e) => setStatus(e.target.value as CardStatus)}
+                        className="bg-white/5 border border-white/5 rounded-2xl px-6 py-4 text-[10px] font-black uppercase tracking-widest focus:outline-none focus:border-emerald-500/50"
+                    >
+                        <option value="">All Status</option>
+                        {Object.values(CardStatus).map(s => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
+                    </select>
                 </div>
             </div>
 
-            {/* Intelligence Grid (Bento Style) */}
-            {isLoading ? (
-                <div className="flex flex-col items-center justify-center py-40">
-                    <motion.div
-                        animate={{ rotate: 360 }}
-                        transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                        className="w-12 h-12 border-2 border-white/5 border-t-white rounded-full mb-6"
-                    />
-                    <p className="text-[10px] font-black text-white/10 uppercase tracking-[0.5em] animate-pulse">Synchronizing Cryptographic Vault...</p>
-                </div>
-            ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 relative z-10">
-                    <AnimatePresence mode="popLayout">
-                        {filteredSources.map((source, i) => (
-                            <motion.div
-                                key={source.id}
-                                layout
-                                initial={{ opacity: 0, y: 30 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, scale: 0.9 }}
-                                transition={{ delay: i * 0.03 }}
-                                className="group relative"
-                            >
-                                <div className="absolute inset-0 bg-gradient-to-b from-white/[0.05] to-transparent rounded-[2.5rem] opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
-
-                                <div className="glass-card rounded-[2.5rem] p-8 border-white/5 flex flex-col h-full bg-white/[0.02] hover:bg-white/[0.04] hover:border-white/10 transition-all duration-500">
-                                    {/* Card Header */}
-                                    <div className="flex justify-between items-start mb-10">
-                                        <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-white/10 to-transparent border border-white/5 flex items-center justify-center text-2xl">
-                                            📜
-                                        </div>
-                                        <div className="flex flex-col items-end">
-                                            <span className="text-[8px] font-black text-white/20 uppercase tracking-widest mb-1">Status</span>
-                                            <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-[8px] font-black uppercase tracking-tighter border border-emerald-500/20">
-                                                <span className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse" />
-                                                Active
-                                            </span>
-                                        </div>
-                                    </div>
-
-                                    {/* Content */}
-                                    <div className="mb-10 flex-1">
-                                        <h3 className="text-xl font-black text-white tracking-tight mb-2 group-hover:text-[#00ffcc] transition-colors line-clamp-2">
-                                            {source.displayName || source.name}
-                                        </h3>
-                                        <div className="flex flex-wrap gap-2 mb-6">
-                                            <span className="text-[8px] font-black text-white/30 uppercase tracking-widest bg-white/5 px-3 py-1.5 rounded-lg border border-white/5">
-                                                {formatSize(source.size)}
-                                            </span>
-                                            <span className="text-[8px] font-black text-white/30 uppercase tracking-widest bg-white/5 px-3 py-1.5 rounded-lg border border-white/5">
-                                                VLD.{new Date(source.created_at).getFullYear()}
-                                            </span>
-                                        </div>
-                                    </div>
-
-                                    {/* Yield Progress */}
-                                    <div className="mb-10">
-                                        <div className="flex justify-between items-end mb-3">
-                                            <p className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em]">Knowledge Yield</p>
-                                            <p className="text-xs font-black text-white">{source.cardCount} <span className="text-white/20 font-medium">Nodes</span></p>
-                                        </div>
-                                        <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
-                                            <motion.div
-                                                initial={{ width: 0 }}
-                                                animate={{ width: `${Math.min((source.cardCount / 100) * 100, 100)}%` }}
-                                                className="h-full bg-gradient-to-r from-[#00ffcc] to-emerald-500 rounded-full"
-                                            />
-                                        </div>
-                                    </div>
-
-                                    {/* Action Bar */}
-                                    <div className="flex items-center justify-between gap-4 pt-6 border-t border-white/5">
-                                        <div className="flex gap-1 p-1 bg-black/40 rounded-xl border border-white/5">
-                                            {['GS', 'Mains', 'PYQ'].map(f => (
-                                                <button
-                                                    key={f}
-                                                    onClick={() => handleMoveToFolder(source.id, f)}
-                                                    className={`px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-tighter transition-all ${source.folder === f ? 'bg-white/10 text-white shadow-lg' : 'text-white/20 hover:text-white/60'
-                                                        }`}
-                                                >
-                                                    {f}
-                                                </button>
-                                            ))}
-                                        </div>
-
-                                        <button
-                                            onClick={() => handleDelete(source.id)}
-                                            disabled={deletingId === source.id}
-                                            className="w-10 h-10 rounded-xl bg-rose-500/5 border border-rose-500/10 flex items-center justify-center text-rose-500/40 hover:bg-rose-500 hover:text-white hover:border-rose-500 transition-all disabled:opacity-50"
-                                        >
-                                            {deletingId === source.id ? '...' : '✕'}
+            {/* Tactical Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {isLoading ? (
+                    Array.from({ length: 9 }).map((_, i) => (
+                        <div key={i} className="h-64 bg-white/5 border border-white/5 rounded-3xl animate-pulse" />
+                    ))
+                ) : cards.length === 0 ? (
+                    <div className="col-span-full py-32 text-center opacity-30 flex flex-col items-center">
+                        <Database size={48} className="mb-4" />
+                        <p className="text-sm font-black uppercase tracking-widest">No nodes found in the current sector.</p>
+                    </div>
+                ) : (
+                    cards.map((card) => (
+                        <div key={card.id} className="bg-[#0c0c0c] border border-white/10 rounded-3xl p-6 hover:border-white/20 transition-all flex flex-col justify-between group h-full">
+                            <div>
+                                <div className="flex justify-between items-start mb-6">
+                                    <span className={`px-2 py-1 rounded text-[8px] font-black uppercase tracking-wider ${card.status === CardStatus.LIVE ? 'bg-white/10 text-white border border-white/20' : 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'}`}>
+                                        {card.status}
+                                    </span>
+                                    <div className="flex gap-2">
+                                        <button onClick={() => setEditingCard(card)} className="p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors text-white/40 hover:text-white">
+                                            <Edit3 size={14} />
+                                        </button>
+                                        <button onClick={() => handleDelete(card.id)} className="p-2 rounded-lg bg-rose-500/5 hover:bg-rose-500/20 transition-colors text-rose-500/40 hover:text-rose-500">
+                                            <Trash2 size={14} />
                                         </button>
                                     </div>
                                 </div>
-                            </motion.div>
-                        ))}
-                    </AnimatePresence>
-                </div>
-            )}
+                                <h3 className="text-white font-bold text-xs mb-3 line-clamp-2 leading-relaxed">{card.front}</h3>
+                                <p className="text-white/40 text-[10px] leading-relaxed line-clamp-3 mb-6">{card.back}</p>
+                            </div>
+                            <div className="pt-6 border-t border-white/5 flex items-center justify-between">
+                                <span className="text-[9px] font-black text-white/20 uppercase tracking-widest flex items-center gap-1">
+                                    <Tag size={10} /> {card.subject}
+                                </span>
+                                <span className="text-[9px] font-black text-white/40 uppercase bg-white/5 px-2 py-0.5 rounded leading-none">{card.type}</span>
+                            </div>
+                        </div>
+                    ))
+                )}
+            </div>
+
+            {/* Pagination Controls */}
+            <div className="mt-12 flex items-center justify-center gap-6">
+                <button
+                    disabled={page === 1}
+                    onClick={() => setPage(page - 1)}
+                    className="p-3 rounded-full bg-white/5 border border-white/10 disabled:opacity-20 hover:bg-white/10 transition-colors"
+                >
+                    <ChevronLeft size={20} />
+                </button>
+                <span className="text-xs font-black uppercase tracking-widest text-white/40">Page {page} of {Math.ceil(total / 20)}</span>
+                <button
+                    disabled={page >= Math.ceil(total / 20)}
+                    onClick={() => setPage(page + 1)}
+                    className="p-3 rounded-full bg-white/5 border border-white/10 disabled:opacity-20 hover:bg-white/10 transition-colors"
+                >
+                    <ChevronRight size={20} />
+                </button>
+            </div>
 
             {/* Back to Base */}
             <div className="mt-24 relative z-10 flex justify-center">

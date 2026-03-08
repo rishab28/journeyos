@@ -48,7 +48,7 @@ export default function NeedleGauge() {
     };
 
     const getColor = (prob: number) => {
-        if (prob >= 70) return { gradient: ['#10b981', '#34d399'], label: 'Excellent' };
+        if (prob >= 70) return { gradient: ['#818cf8', '#a5b4fc'], label: 'Excellent' };
         if (prob >= 45) return { gradient: ['#f59e0b', '#fbbf24'], label: 'Good' };
         if (prob >= 20) return { gradient: ['#f97316', '#fb923c'], label: 'Developing' };
         return { gradient: ['#ef4444', '#f87171'], label: 'Starting' };

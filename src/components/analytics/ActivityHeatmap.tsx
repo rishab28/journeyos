@@ -55,16 +55,16 @@ export default function ActivityHeatmap() {
 
     const getIntensityColor = (count: number) => {
         if (count === 0) return 'bg-white/[0.03] border-white/[0.02]';
-        if (count < 5) return 'bg-emerald-500/20 border-emerald-500/20';
-        if (count < 15) return 'bg-emerald-500/40 border-emerald-500/40';
-        if (count < 30) return 'bg-emerald-500/70 border-emerald-500/60 shadow-[0_0_8px_rgba(16,185,129,0.3)]';
-        return 'bg-emerald-400 border-emerald-300 shadow-[0_0_12px_rgba(52,211,153,0.5)]'; // 30+ is nuclear
+        if (count < 5) return 'bg-indigo-500/20 border-indigo-500/20';
+        if (count < 15) return 'bg-indigo-500/40 border-indigo-500/40';
+        if (count < 30) return 'bg-indigo-500/70 border-indigo-500/60 shadow-[0_0_8px_rgba(99,102,241,0.3)]';
+        return 'bg-indigo-400 border-indigo-300 shadow-[0_0_12px_rgba(99,102,241,0.5)]'; // 30+ is nuclear
     };
 
     return (
         <div className="p-5 rounded-3xl border border-white/[0.06] bg-white/[0.02] backdrop-blur-sm">
             <div className="flex items-center justify-between mb-4">
-                <p className="text-[10px] font-semibold text-emerald-400/50 uppercase tracking-widest">
+                <p className="text-[10px] font-semibold text-indigo-400/50 uppercase tracking-widest">
                     📅 30-Day Tactical Grid
                 </p>
                 <div className="text-right">
@@ -93,10 +93,10 @@ export default function ActivityHeatmap() {
             <div className="flex items-center justify-end gap-1.5 mt-3">
                 <span className="text-[9px] text-white/30 mr-1">Less</span>
                 <div className="w-2.5 h-2.5 rounded-sm bg-white/[0.03]" />
-                <div className="w-2.5 h-2.5 rounded-sm bg-emerald-500/20" />
-                <div className="w-2.5 h-2.5 rounded-sm bg-emerald-500/40" />
-                <div className="w-2.5 h-2.5 rounded-sm bg-emerald-500/70" />
-                <div className="w-2.5 h-2.5 rounded-sm bg-emerald-400" />
+                <div className="w-2.5 h-2.5 rounded-sm bg-indigo-500/20" />
+                <div className="w-2.5 h-2.5 rounded-sm bg-indigo-500/40" />
+                <div className="w-2.5 h-2.5 rounded-sm bg-indigo-500/70" />
+                <div className="w-2.5 h-2.5 rounded-sm bg-indigo-400" />
                 <span className="text-[9px] text-white/30 ml-1">More</span>
             </div>
         </div>

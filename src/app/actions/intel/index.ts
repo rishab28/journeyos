@@ -5,3 +5,4 @@ export * from './intelGraph';
 export * from './oracleBacktest';
 export * from './syllabusAnalyzer';
 export * from './propagatePatterns';
+export * from './synthesisEngine';

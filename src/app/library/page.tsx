@@ -7,12 +7,14 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
+import MentorChat from '@/components/mentor/MentorChat';
 import { globalSearchCards, generateMissionBrief } from '@/app/actions/learner';
-import { getConnectedIntel } from '@/app/actions/intel';
+import { getConnectedIntel } from '@/app/actions/intel/intelGraph';
 import { triggerHaptic } from '@/lib/core/haptics';
 import MissionBriefPanel from '@/components/shared/MissionBriefPanel';
-import BioSenseDashboard from '@/components/intelligence/BioSenseDashboard';
+import VaultDMInbox from '@/components/vault/VaultDMInbox';
 import { GlassCard } from '@/components/ui/GlassCard';
+import { useProfileStore } from '@/store/profileStore';
 
 const SUBJECTS = [
     'All', 'Polity', 'History', 'Geography', 'Economy', 'Enviro', 'Sci & Tech'
@@ -21,6 +23,8 @@ const SUBJECTS = [
 export default function LibraryPage() {
     const [searchQuery, setSearchQuery] = useState('');
     const [activeSubject, setActiveSubject] = useState('All');
+    const [isMentorOpen, setIsMentorOpen] = useState(false);
+    const { avatarUrl } = useProfileStore();
 
     const handleSubjectSwitch = (sub: string) => {
         if (activeSubject === sub) return;
@@ -34,6 +38,9 @@ export default function LibraryPage() {
     const [isBriefOpen, setIsBriefOpen] = useState(false);
     const [activeBrief, setActiveBrief] = useState({ briefing: '', nodeName: '', connections: [] });
     const [isBriefLoading, setIsBriefLoading] = useState(false);
+
+    // ── DM Inbox State ──
+    const [isDMInboxOpen, setIsDMInboxOpen] = useState(false);
 
     const handleNodeClick = async (nodeId: string, nodeName: string) => {
         triggerHaptic('medium');
@@ -77,58 +84,47 @@ export default function LibraryPage() {
         <div className="w-full min-h-screen bg-[#050505] text-white pt-16 pb-24 overflow-y-auto">
             {/* Ambient Background */}
             <div className="fixed inset-0 z-0 pointer-events-none">
-                <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-[#00ffcc]/10 blur-[120px] rounded-full mix-blend-screen" />
+                <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-indigo-500/10 blur-[120px] rounded-full mix-blend-screen" />
+            </div>
+
+            <div className="absolute left-6 top-8 sm:left-10 sm:top-10 z-50">
+                <Link href="/dashboard" className="group">
+                    <div className="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center overflow-hidden group-hover:bg-white/10 group-hover:border-white/20 transition-all shadow-lg backdrop-blur-md">
+                        {avatarUrl ? (
+                            <img src={avatarUrl} alt="Profile" className="w-full h-full object-cover transition-transform group-hover:scale-110" />
+                        ) : (
+                            <span className="text-sm group-hover:scale-110 transition-transform">👤</span>
+                        )}
+                    </div>
+                </Link>
+            </div>
+
+            <div className="absolute right-6 top-8 sm:right-10 sm:top-10 z-50">
+                <button
+                    onClick={() => {
+                        triggerHaptic('medium');
+                        setIsMentorOpen(true);
+                    }}
+                    className="group"
+                >
+                    <div className="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center group-hover:bg-white/10 group-hover:border-white/20 transition-all shadow-lg backdrop-blur-md">
+                        <span className="text-sm group-hover:scale-110 transition-transform">🔍</span>
+                    </div>
+                </button>
             </div>
 
             <div className="relative z-10 px-6 max-w-lg mx-auto">
 
                 {/* Header */}
-                <div className="mb-8 mt-4 flex justify-between items-end">
+                <div className="mb-8 mt-12 sm:mt-16 flex justify-between items-start">
                     <div>
-                        <h1 className="text-3xl font-black uppercase tracking-widest text-[#00ffcc] drop-shadow-[0_0_15px_rgba(0,255,204,0.3)]">
-                            The Vault
+                        <h1 className="text-3xl font-black uppercase tracking-widest text-indigo-400 drop-shadow-[0_0_15px_rgba(99,102,241,0.3)]">
+                            The Library
                         </h1>
                         <p className="text-white/40 text-xs uppercase tracking-widest mt-1">
-                            Strategic Archive & Causal Graph
+                            Neural Node Archive
                         </p>
                     </div>
-                </div>
-
-                {/* ── Intelligence Saturation Dashboard (CEO Mode) ── */}
-                <div className="grid grid-cols-2 gap-4 mb-8">
-                    <motion.div
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        className="p-5 rounded-3xl bg-white/[0.03] border border-white/5 relative overflow-hidden group"
-                    >
-                        <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">🧠</div>
-                        <h4 className="text-[10px] text-white/30 uppercase tracking-widest font-bold mb-3">Intelligence Saturation</h4>
-                        <div className="flex items-end gap-2">
-                            <span className="text-3xl font-black text-[#00ffcc]">78%</span>
-                            <span className="text-[10px] text-emerald-400 font-bold mb-1">+12%</span>
-                        </div>
-                        <div className="w-full h-1 bg-white/5 rounded-full mt-3 overflow-hidden">
-                            <motion.div
-                                initial={{ width: 0 }}
-                                animate={{ width: '78%' }}
-                                transition={{ duration: 1, ease: 'easeOut' }}
-                                className="h-full bg-gradient-to-r from-[#00ffcc] to-emerald-500"
-                            />
-                        </div>
-                    </motion.div>
-
-                    <motion.div
-                        initial={{ opacity: 0, x: 20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        className="p-5 rounded-3xl bg-white/[0.03] border border-white/5 relative overflow-hidden group"
-                    >
-                        <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">🔗</div>
-                        <h4 className="text-[10px] text-white/30 uppercase tracking-widest font-bold mb-3">Causal Connections</h4>
-                        <div className="flex items-end gap-2">
-                            <span className="text-3xl font-black text-white/90">2,412</span>
-                        </div>
-                        <p className="text-[10px] text-white/40 mt-3 font-medium">Nodes cross-linked via AI</p>
-                    </motion.div>
                 </div>
 
                 {/* Search Bar */}
@@ -138,7 +134,7 @@ export default function LibraryPage() {
                         placeholder="Search themes, PYQs or topics..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full bg-white/10 border border-white/10 rounded-2xl px-5 py-4 text-sm focus:outline-none focus:border-[#00ffcc]/50 transition-all font-medium placeholder:text-white/20"
+                        className="w-full bg-white/10 border border-white/10 rounded-2xl px-5 py-4 text-sm focus:outline-none focus:border-indigo-500/50 transition-all font-medium placeholder:text-white/20"
                     />
                     {isSearching && (
                         <div className="absolute right-4 top-4">
@@ -154,7 +150,7 @@ export default function LibraryPage() {
                             key={sub}
                             onClick={() => handleSubjectSwitch(sub)}
                             className={`snap-start whitespace-nowrap px-5 py-2 rounded-full border text-sm transition-all font-bold tracking-wider ${activeSubject === sub
-                                ? 'bg-[#00ffcc] text-black border-transparent shadow-[0_0_15px_rgba(0,255,204,0.3)]'
+                                ? 'bg-indigo-500 text-white border-transparent shadow-[0_0_15px_rgba(99,102,241,0.3)]'
                                 : 'bg-white/5 border-white/10 text-white/60 hover:text-white hover:bg-white/10'
                                 }`}
                         >
@@ -169,7 +165,7 @@ export default function LibraryPage() {
                         <div className="space-y-4">
                             <div className="flex justify-between items-center">
                                 <h3 className="text-[10px] text-white/30 uppercase tracking-[0.2em] font-bold">Search Results ({searchResults.length})</h3>
-                                <button onClick={() => setSearchQuery('')} className="text-[10px] text-[#00ffcc] uppercase font-bold">Clear</button>
+                                <button onClick={() => setSearchQuery('')} className="text-[10px] text-indigo-400 uppercase font-bold">Clear</button>
                             </div>
                             <div className="grid gap-4">
                                 <AnimatePresence mode="popLayout">
@@ -181,10 +177,10 @@ export default function LibraryPage() {
                                             exit={{ opacity: 0, scale: 0.95 }}
                                             transition={{ duration: 0.2, delay: idx * 0.03 }}
                                             onClick={() => handleNodeClick(card.id, card.front)}
-                                            className="p-4 rounded-2xl bg-white/[0.03] border border-white/5 hover:border-[#00ffcc]/30 transition-all cursor-pointer group"
+                                            className="p-4 rounded-2xl bg-white/[0.03] border border-white/5 hover:border-indigo-500/30 transition-all cursor-pointer group"
                                         >
                                             <div className="flex justify-between items-start mb-2">
-                                                <span className="text-[9px] bg-[#00ffcc]/10 text-[#00ffcc] px-2 py-0.5 rounded uppercase font-bold tracking-tighter">{card.subject}</span>
+                                                <span className="text-[9px] bg-indigo-500/10 text-indigo-400 px-2 py-0.5 rounded uppercase font-bold tracking-tighter">{card.subject}</span>
                                                 <span className="text-[9px] text-white/20">{card.topic}</span>
                                             </div>
                                             <p className="text-sm text-white/80 font-medium line-clamp-2 group-hover:text-white transition-colors">{card.front}</p>
@@ -201,17 +197,12 @@ export default function LibraryPage() {
                         </div>
                     ) : (
                         <>
-                            {/* 0. Bio-Sense Dashboard (Sprint 18) */}
-                            <div className="mb-8">
-                                <BioSenseDashboard />
-                            </div>
-
                             {/* 1. Oracle Sniper List */}
                             <Link href="/war-room/oracle" className="block outline-none">
                                 <motion.div
                                     whileHover={{ y: -2, scale: 1.01 }}
                                     whileTap={{ scale: 0.98 }}
-                                    className="w-full bg-[#111] border border-[#00ffcc]/30 rounded-[2rem] p-6 relative overflow-hidden shadow-[0_0_30px_rgba(0,255,204,0.05)]"
+                                    className="w-full bg-[#111] border border-indigo-500/30 rounded-[2rem] p-6 relative overflow-hidden shadow-[0_0_30px_rgba(99,102,241,0.05)]"
                                 >
                                     <div className="absolute -right-4 -top-4 text-8xl opacity-10 blur-[2px]">🎯</div>
                                     <div className="relative z-10">
@@ -222,50 +213,59 @@ export default function LibraryPage() {
                                         <p className="text-white/50 text-sm leading-relaxed mb-4 font-mono w-5/6">
                                             The 2026 predictions derived from 15 years of recursive AI backtesting. High-probability logic.
                                         </p>
-                                        <div className="text-[10px] text-[#00ffcc] uppercase tracking-widest font-bold bg-[#00ffcc]/10 w-max px-3 py-1 rounded">
+                                        <div className="text-[10px] text-indigo-400 uppercase tracking-widest font-bold bg-indigo-500/10 w-max px-3 py-1 rounded">
                                             God-Mode Intel
                                         </div>
                                     </div>
                                 </motion.div>
                             </Link>
 
-                            {/* 2. PYQ Archive */}
-                            <div className="block outline-none opacity-80 cursor-not-allowed">
-                                <div className="w-full bg-white/5 border border-white/10 rounded-[2rem] p-6 relative overflow-hidden blur-[0.5px]">
-                                    <div className="absolute -right-4 -top-4 text-8xl opacity-[0.03] blur-[2px]">📚</div>
-                                    <div className="relative z-10">
-                                        <div className="flex items-center gap-3 mb-2">
-                                            <span className="text-2xl">📚</span>
-                                            <h2 className="text-xl font-bold text-white/80">PYQ Archive</h2>
-                                        </div>
-                                        <p className="text-white/40 text-sm leading-relaxed mb-4 w-5/6">
-                                            The raw 15-year dataset. Filter by year, subject, and lethality.
-                                        </p>
-                                        <div className="text-[10px] text-white/30 uppercase tracking-widest font-bold bg-white/5 w-max px-3 py-1 rounded border border-white/10 flex items-center gap-2">
-                                            <span>🔒</span> Locked (Ingesting)
-                                        </div>
+                            {/* 2. PYQ Archive — UNLOCKED */}
+                            <motion.div
+                                whileHover={{ y: -2, scale: 1.01 }}
+                                whileTap={{ scale: 0.98 }}
+                                onClick={() => setSearchQuery('PYQ')}
+                                className="w-full bg-[#111] border border-indigo-500/20 rounded-[2rem] p-6 relative overflow-hidden cursor-pointer hover:border-indigo-500/40 transition-all"
+                            >
+                                <div className="absolute -right-4 -top-4 text-8xl opacity-10 blur-[2px]">📚</div>
+                                <div className="relative z-10">
+                                    <div className="flex items-center gap-3 mb-2">
+                                        <span className="text-2xl">📚</span>
+                                        <h2 className="text-xl font-bold text-white/90">PYQ Archive</h2>
+                                    </div>
+                                    <p className="text-white/50 text-sm leading-relaxed mb-4 w-5/6">
+                                        The raw 15-year dataset. Filter by year, subject, and lethality.
+                                    </p>
+                                    <div className="text-[10px] text-indigo-400 uppercase tracking-widest font-bold bg-indigo-500/10 w-max px-3 py-1 rounded border border-indigo-500/20 flex items-center gap-2">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
+                                        Tap to Explore
                                     </div>
                                 </div>
-                            </div>
+                            </motion.div>
 
-                            {/* 3. CA Live-Wire */}
-                            <div className="block outline-none opacity-80 cursor-not-allowed">
-                                <div className="w-full bg-emerald-500/5 border border-emerald-500/10 rounded-[2rem] p-6 relative overflow-hidden blur-[0.5px]">
-                                    <div className="absolute -right-4 -top-4 text-8xl opacity-[0.03] blur-[2px]">⚡</div>
+                            {/* 3. CA Live-Wire — UNLOCKED */}
+                            <Link href="/" className="block outline-none">
+                                <motion.div
+                                    whileHover={{ y: -2, scale: 1.01 }}
+                                    whileTap={{ scale: 0.98 }}
+                                    className="w-full bg-indigo-500/5 border border-indigo-500/20 rounded-[2rem] p-6 relative overflow-hidden hover:border-indigo-500/40 transition-all"
+                                >
+                                    <div className="absolute -right-4 -top-4 text-8xl opacity-[0.05] blur-[2px]">⚡</div>
                                     <div className="relative z-10">
                                         <div className="flex items-center gap-3 mb-2">
                                             <span className="text-2xl">⚡</span>
-                                            <h2 className="text-xl font-bold text-white/80">CA Live-Wire</h2>
+                                            <h2 className="text-xl font-bold text-white/90">CA Live-Wire</h2>
                                         </div>
-                                        <p className="text-white/40 text-sm leading-relaxed mb-4 w-5/6">
+                                        <p className="text-white/50 text-sm leading-relaxed mb-4 w-5/6">
                                             Pattern-filtered current affairs mapping strict syllabus nodes.
                                         </p>
-                                        <div className="text-[10px] text-emerald-500/50 uppercase tracking-widest font-bold bg-emerald-500/10 w-max px-3 py-1 rounded border border-emerald-500/20 flex items-center gap-2">
-                                            <span>🔒</span> Preparing Feed
+                                        <div className="text-[10px] text-indigo-400 uppercase tracking-widest font-bold bg-indigo-500/10 w-max px-3 py-1 rounded border border-indigo-500/20 flex items-center gap-2">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
+                                            Live Feed
                                         </div>
                                     </div>
-                                </div>
-                            </div>
+                                </motion.div>
+                            </Link>
                         </>
                     )}
                 </div>
@@ -279,6 +279,31 @@ export default function LibraryPage() {
                 nodeName={activeBrief.nodeName}
                 connections={activeBrief.connections}
             />
+
+            <MentorChat isOpen={isMentorOpen} onClose={() => setIsMentorOpen(false)} />
+
+            {/* Instagram Style DM Inbox Modal */}
+            <VaultDMInbox isOpen={isDMInboxOpen} onClose={() => setIsDMInboxOpen(false)} />
+
+            {/* Floating Message Icon */}
+            {!isDMInboxOpen && (
+                <div className="fixed bottom-24 left-6 z-40 sm:bottom-10 sm:left-10">
+                    <button
+                        onClick={() => {
+                            triggerHaptic('medium');
+                            setIsDMInboxOpen(true);
+                        }}
+                        className="w-14 h-14 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 shadow-[0_0_20px_rgba(59,130,246,0.5)] flex items-center justify-center border-2 border-black hover:scale-105 active:scale-95 transition-transform relative group"
+                    >
+                        <span className="text-2xl">💬</span>
+                        <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 border-2 border-black"></div>
+                    </button>
+                    {/* Tooltip hint on hover (desktop) */}
+                    <div className="absolute left-16 top-1/2 -translate-y-1/2 ml-2 px-3 py-1.5 bg-black/80 backdrop-blur-md rounded-lg border border-white/10 text-xs font-bold text-white opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap hidden sm:block">
+                        Direct Messages
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

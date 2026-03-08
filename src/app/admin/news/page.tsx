@@ -1,128 +1,245 @@
 'use client';
 
 // ═══════════════════════════════════════════════════════════
-// JourneyOS — Admin News Synapse Intake
-// Allows admin to paste daily news and auto-link to syllabus
+// JourneyOS — Admin News RSS Engine
+// Auto-pulls from The Hindu, IE, TOI, BBC, AJ every 4 hours
+// Manual Run Now button for immediate sync
 // ═══════════════════════════════════════════════════════════
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ingestNews, NewsIngestResult } from '@/app/actions/admin';
 import { toast } from 'sonner';
 
+const RSS_SOURCES = [
+    { name: 'The Hindu', url: 'https://www.thehindu.com/feeder/default.rss', icon: '📰' },
+    { name: 'Indian Express', url: 'https://indianexpress.com/feed/', icon: '🗞️' },
+    { name: 'Times of India', url: 'https://timesofindia.indiatimes.com/rssfeeds/-2128936835.cms', icon: '📄' },
+    { name: 'Al Jazeera', url: 'https://www.aljazeera.com/xml/rss/all.xml', icon: '🌍' },
+    { name: 'BBC South Asia', url: 'http://feeds.bbci.co.uk/news/world/asia/rss.xml', icon: '🎙️' },
+];
+
+interface SyncResult {
+    success: boolean;
+    count?: number;
+    error?: string;
+    timestamp?: string;
+}
+
 export default function AdminNewsPage() {
-    const [rawText, setRawText] = useState('');
-    const [isProcessing, setIsProcessing] = useState(false);
-    const [result, setResult] = useState<NewsIngestResult | null>(null);
+    const [isSyncing, setIsSyncing] = useState(false);
+    const [lastResult, setLastResult] = useState<SyncResult | null>(null);
+    const [nextSyncIn, setNextSyncIn] = useState<string>('');
+    const [recentStories, setRecentStories] = useState<any[]>([]);
+    const [isLoadingStories, setIsLoadingStories] = useState(true);
 
-    const handleIngest = async () => {
-        if (!rawText.trim() || rawText.length < 50) {
-            toast.error('Please paste a substantial amount of text (at least 50 chars).');
-            return;
-        }
+    // Fetch recent stories from DB
+    const fetchRecentStories = async () => {
+        setIsLoadingStories(true);
+        try {
+            const res = await fetch('/api/admin/recent-stories');
+            if (res.ok) {
+                const data = await res.json();
+                setRecentStories(data.stories || []);
+            }
+        } catch (_) { }
+        setIsLoadingStories(false);
+    };
 
-        setIsProcessing(true);
-        setResult(null);
-        toast.loading('Initializing Synapse Engine...', { id: 'news-ingest' });
+    useEffect(() => {
+        fetchRecentStories();
+
+        // Calculate next auto-sync (every 4h from last sync stored in localStorage)
+        const updateCountdown = () => {
+            const lastSync = localStorage.getItem('lastStoriesSync');
+            if (lastSync) {
+                const next = new Date(lastSync).getTime() + 4 * 60 * 60 * 1000;
+                const diff = next - Date.now();
+                if (diff > 0) {
+                    const h = Math.floor(diff / 3600000);
+                    const m = Math.floor((diff % 3600000) / 60000);
+                    setNextSyncIn(`${h}h ${m}m`);
+                } else {
+                    setNextSyncIn('Sync due!');
+                    // Auto trigger if overdue
+                    triggerSync(true);
+                }
+            } else {
+                setNextSyncIn('Never synced');
+            }
+        };
+
+        updateCountdown();
+        const interval = setInterval(updateCountdown, 60000);
+        return () => clearInterval(interval);
+    }, []);
+
+    const triggerSync = async (auto = false) => {
+        if (isSyncing) return;
+        setIsSyncing(true);
+        if (!auto) toast.loading('Pulling RSS feeds & classifying with AI...', { id: 'rss-sync' });
 
         try {
-            const tempResult = await ingestNews(rawText);
+            const res = await fetch('/api/cron/stories');
+            const data = await res.json();
 
-            if (tempResult.success) {
-                toast.success(`Synapse Link Complete: ${tempResult.eventsProcessed} events found, ${tempResult.linksCreated} cards interlinked.`, { id: 'news-ingest' });
-                setResult(tempResult);
-                setRawText('');
+            localStorage.setItem('lastStoriesSync', new Date().toISOString());
+            setLastResult({ ...data, timestamp: new Date().toISOString() });
+
+            if (data.success) {
+                toast.success(`✅ Synced! ${data.count} new UPSC stories saved.`, { id: 'rss-sync' });
+                fetchRecentStories();
             } else {
-                toast.error(tempResult.error || 'Failed to process news.', { id: 'news-ingest' });
+                toast.error(data.error || 'Sync failed', { id: 'rss-sync' });
             }
         } catch (err: any) {
-            toast.error(err.message || 'An unexpected error occurred.', { id: 'news-ingest' });
+            toast.error('Network error: ' + err.message, { id: 'rss-sync' });
+            setLastResult({ success: false, error: err.message });
         } finally {
-            setIsProcessing(false);
+            setIsSyncing(false);
         }
+    };
+
+    const subjectColor: Record<string, string> = {
+        Polity: 'bg-blue-500/20 text-blue-400',
+        Economy: 'bg-emerald-500/20 text-emerald-400',
+        Environment: 'bg-green-500/20 text-green-400',
+        Science: 'bg-cyan-500/20 text-cyan-400',
+        History: 'bg-amber-500/20 text-amber-400',
+        Geography: 'bg-orange-500/20 text-orange-400',
+        'Current Affairs': 'bg-purple-500/20 text-purple-400',
     };
 
     return (
         <div className="min-h-screen bg-[#050505] text-white p-8 font-sans pb-32">
-            <div className="max-w-4xl mx-auto space-y-8">
-                {/* Header */}
-                <div className="flex items-center justify-between border-b border-white/10 pb-6 mb-8">
-                    <div>
-                        <h1 className="text-3xl font-black uppercase tracking-widest text-emerald-400 mb-2 font-outfit">
-                            Live Synapse Engine
-                        </h1>
-                        <p className="text-white/40 text-sm font-medium">Paste daily editorial/news to auto-link with static syllabus cards.</p>
-                    </div>
-                </div>
+            <div className="max-w-5xl mx-auto space-y-8">
 
-                {/* Input Area */}
-                <div className="bg-white/[0.02] border border-white/[0.05] rounded-[2rem] p-6 sm:p-8 backdrop-blur-xl">
-                    <div className="flex justify-between items-center mb-4">
-                        <label className="text-xs font-bold uppercase tracking-[0.2em] text-white/50">Raw Source Text</label>
-                        <span className="text-[10px] text-white/30 uppercase tracking-widest">{rawText.length} chars</span>
+                {/* Header */}
+                <div className="flex items-start justify-between border-b border-white/10 pb-6">
+                    <div>
+                        <h1 className="text-3xl font-black uppercase tracking-widest text-white mb-2">
+                            🗞️ RSS News <span className="text-white/20">Engine</span>
+                        </h1>
+                        <p className="text-white/40 text-xs font-black uppercase tracking-widest mt-1">Intelligent Extraction Matrix</p>
                     </div>
-                    <textarea
-                        value={rawText}
-                        onChange={(e) => setRawText(e.target.value)}
-                        placeholder="Paste The Hindu editorial, Indian Express explainer, or daily news brief here..."
-                        className="w-full h-64 bg-black/40 border border-white/5 rounded-2xl p-6 text-white text-sm leading-loose focus:outline-none focus:border-emerald-500/30 transition-colors font-serif resize-none"
-                    />
-                    <div className="mt-6 flex justify-end">
+                    <div className="flex flex-col items-end gap-2">
                         <motion.button
-                            onClick={handleIngest}
-                            disabled={isProcessing || !rawText.trim()}
-                            className="bg-emerald-500 hover:bg-emerald-400 text-black font-black uppercase tracking-[0.2em] text-xs px-8 py-4 rounded-full disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                            whileHover={{ scale: 1.02 }}
+                            onClick={() => triggerSync()}
+                            disabled={isSyncing}
+                            className="bg-indigo-600 hover:bg-indigo-500 text-white font-black uppercase tracking-widest text-xs px-8 py-4 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-3 shadow-[0_4px_20px_rgba(79,70,229,0.2)]"
+                            whileHover={{ scale: 1.01 }}
                             whileTap={{ scale: 0.98 }}
                         >
-                            {isProcessing ? 'Synthesizing...' : 'Ignite Synapse'}
+                            {isSyncing ? (
+                                <>
+                                    <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                    </svg>
+                                    Syncing...
+                                </>
+                            ) : (
+                                <>
+                                    <span>Execute Pulse Sync</span>
+                                    <span>⚡</span>
+                                </>
+                            )}
                         </motion.button>
+                        <span className="text-[9px] text-white/20 uppercase tracking-[0.3em] font-black">
+                            Auto-Pulse: {nextSyncIn || 'SYNCHRONIZING...'}
+                        </span>
                     </div>
                 </div>
 
-                {/* Results Area */}
-                <AnimatePresence>
-                    {result && result.success && (
-                        <motion.div
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            className="bg-emerald-500/[0.02] border border-emerald-500/20 rounded-[2rem] p-6 sm:p-8 backdrop-blur-xl"
-                        >
-                            <h2 className="text-lg font-bold text-emerald-400 mb-6 flex items-center gap-3">
-                                <span className="text-2xl">⚡</span> Synapse Network Expanded
-                            </h2>
-
-                            <div className="grid grid-cols-2 gap-4 mb-8">
-                                <div className="bg-black/50 p-6 rounded-2xl border border-white/5 text-center">
-                                    <div className="text-4xl font-black text-white mb-2">{result.eventsProcessed}</div>
-                                    <div className="text-[10px] uppercase tracking-[0.2em] text-white/40">Events Extracted</div>
-                                </div>
-                                <div className="bg-black/50 p-6 rounded-2xl border border-white/5 text-center">
-                                    <div className="text-4xl font-black text-emerald-400 mb-2">{result.linksCreated}</div>
-                                    <div className="text-[10px] uppercase tracking-[0.2em] text-white/40">Cards Interlinked</div>
+                {/* RSS Sources Status */}
+                <div className="bg-white/[0.02] border border-white/[0.05] rounded-3xl p-6">
+                    <h2 className="text-xs font-black uppercase tracking-widest text-white/40 mb-4">Live Sources (Every 4h)</h2>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        {RSS_SOURCES.map((src) => (
+                            <div key={src.name} className="flex items-center gap-3 bg-black/40 border border-white/5 rounded-2xl p-4">
+                                <span className="text-xl">{src.icon}</span>
+                                <div>
+                                    <p className="text-xs font-bold text-white/80">{src.name}</p>
+                                    <div className="flex items-center gap-1 mt-0.5">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                        <span className="text-[9px] text-emerald-400/70 uppercase tracking-widest font-bold">Active</span>
+                                    </div>
                                 </div>
                             </div>
+                        ))}
+                    </div>
+                </div>
 
-                            {result.linkedCards.length > 0 && (
+                {/* Last Sync Result */}
+                <AnimatePresence>
+                    {lastResult && (
+                        <motion.div
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className={`border rounded-3xl p-6 ${lastResult.success ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-red-500/5 border-red-500/20'}`}
+                        >
+                            <div className="flex items-center gap-3">
+                                <span className="text-2xl">{lastResult.success ? '✅' : '❌'}</span>
                                 <div>
-                                    <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-white/50 mb-4 border-b border-white/10 pb-2">New Connections Formed</h3>
-                                    <ul className="space-y-3">
-                                        {result.linkedCards.map((link, idx) => (
-                                            <li key={idx} className="flex flex-col sm:flex-row gap-2 sm:gap-6 bg-white/[0.02] p-4 rounded-xl border border-white/[0.05]">
-                                                <span className="text-emerald-400 font-bold text-sm shrink-0 flex items-center gap-2">
-                                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                                                    {link.event}
-                                                </span>
-                                                <span className="text-white/60 text-sm hidden sm:block">→</span>
-                                                <span className="text-white/80 text-sm">{link.title}</span>
-                                            </li>
-                                        ))}
-                                    </ul>
+                                    <p className="font-bold text-sm">
+                                        {lastResult.success ? `${lastResult.count} new stories saved` : 'Sync failed'}
+                                    </p>
+                                    {lastResult.error && <p className="text-xs text-red-400 mt-1">{lastResult.error}</p>}
+                                    {lastResult.timestamp && (
+                                        <p className="text-[10px] text-white/30 mt-1">
+                                            {new Date(lastResult.timestamp).toLocaleTimeString()}
+                                        </p>
+                                    )}
                                 </div>
-                            )}
+                            </div>
                         </motion.div>
                     )}
                 </AnimatePresence>
+
+                {/* Recent Stories (from DB) */}
+                <div>
+                    <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-xs font-black uppercase tracking-widest text-white/40">Recent Stories in DB</h2>
+                        <button onClick={fetchRecentStories} className="text-[10px] text-white/30 hover:text-white uppercase tracking-widest transition-colors">
+                            Refresh ↺
+                        </button>
+                    </div>
+                    {isLoadingStories ? (
+                        <div className="text-center py-8 text-white/20 text-[10px] uppercase tracking-widest">Loading...</div>
+                    ) : recentStories.length === 0 ? (
+                        <div className="border border-dashed border-white/10 rounded-3xl p-12 text-center">
+                            <p className="text-white/20 text-sm">No stories yet. Click "Run Now" to pull from RSS sources.</p>
+                        </div>
+                    ) : (
+                        <div className="space-y-3">
+                            {recentStories.map((story) => (
+                                <div key={story.id} className="bg-white/[0.02] border border-white/[0.05] rounded-2xl p-5 flex items-start justify-between gap-4">
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${subjectColor[story.subject] || 'bg-white/10 text-white/40'}`}>
+                                                {story.subject}
+                                            </span>
+                                            <span className="text-[9px] text-white/20 uppercase tracking-widest">
+                                                {story.metadata?.source || 'Unknown'}
+                                            </span>
+                                        </div>
+                                        <p className="text-sm font-bold text-white/90 leading-snug line-clamp-2">{story.title}</p>
+                                        <p className="text-[10px] text-white/30 mt-1 uppercase tracking-widest">{story.syllabus_topic}</p>
+                                    </div>
+                                    {story.source_url && (
+                                        <a
+                                            href={story.source_url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="shrink-0 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-[10px] font-bold text-white/40 hover:text-white hover:border-white/30 transition-colors uppercase tracking-widest"
+                                        >
+                                            Source →
+                                        </a>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
             </div>
         </div>
     );

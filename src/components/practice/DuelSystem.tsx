@@ -126,13 +126,13 @@ export default function DuelSystem() {
                             <motion.div
                                 animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.6, 0.3] }}
                                 transition={{ duration: 2, repeat: Infinity }}
-                                className="absolute inset-0 bg-[#00ffcc]/20 rounded-full blur-3xl"
+                                className="absolute inset-0 bg-indigo-500/20 rounded-full blur-3xl"
                             />
                             <div className="w-24 h-24 rounded-full border-2 border-white/5 flex items-center justify-center relative z-10">
                                 <span className="text-4xl animate-pulse">📡</span>
                             </div>
                         </div>
-                        <h3 className="text-sm font-black text-[#00ffcc] uppercase tracking-[0.3em] mt-8 animate-pulse">Matchmaking...</h3>
+                        <h3 className="text-sm font-black text-indigo-400 uppercase tracking-[0.3em] mt-8 animate-pulse">Matchmaking...</h3>
                         <p className="text-[10px] text-white/20 uppercase font-black mt-2 tracking-widest">Scanning War Room</p>
                     </motion.div>
                 )}
@@ -147,7 +147,7 @@ export default function DuelSystem() {
                         {/* Battle Header */}
                         <div className="flex items-center justify-between p-6 bg-white/[0.03] border-b border-white/5">
                             <div className="text-left flex items-center gap-3">
-                                <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center text-sm border border-emerald-500/30">👤</div>
+                                <div className="w-8 h-8 rounded-full bg-indigo-500/20 flex items-center justify-center text-sm border border-indigo-500/30">👤</div>
                                 <div>
                                     <p className="text-[10px] font-black text-white/40 uppercase">You</p>
                                     <p className="text-sm font-black text-white">{score.user}</p>
@@ -209,7 +209,7 @@ export default function DuelSystem() {
                         <div className="grid grid-cols-2 gap-4 mb-8">
                             <div className="bg-white/5 p-4 rounded-2xl border border-white/10">
                                 <p className="text-[9px] font-black text-white/30 uppercase tracking-widest mb-1">XP Gained</p>
-                                <p className="text-xl font-black text-emerald-400">+{score.user * 20}</p>
+                                <p className="text-xl font-black text-indigo-400">+{score.user * 20}</p>
                             </div>
                             <div className="bg-white/5 p-4 rounded-2xl border border-white/10">
                                 <p className="text-[9px] font-black text-white/30 uppercase tracking-widest mb-1">IQ Surge</p>

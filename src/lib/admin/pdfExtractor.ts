@@ -20,8 +20,8 @@ export async function extractTextFromPDF(file: File): Promise<PDFExtractionResul
             return { success: false, text: '', pageCount: 0, error: 'Not a PDF file' };
         }
 
-        // Dynamic import to avoid SSR
-        const pdfjs = await import('pdfjs-dist');
+        // Dynamic import to avoid SSR - pointing specifically to legacy build
+        const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
 
         // Set worker source to our locally hosted file
         pdfjs.GlobalWorkerOptions.workerSrc = new URL(

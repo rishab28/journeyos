@@ -5,9 +5,9 @@
 // Central Hub for Global Operations
 // ═══════════════════════════════════════════════════════════
 
-import React from 'react';
+import React, { useState, useEffect, cloneElement, ReactElement } from 'react';
 import Link from 'next/link';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
     Users,
     Database,
@@ -28,14 +28,14 @@ const ADMIN_MODULES = [
         title: 'Tactical War Room',
         desc: 'Real-time telemetry & KPI monitoring.',
         href: '/admin/war-room',
-        icon: <Activity className="text-fuchsia-400" />,
-        color: 'fuchsia',
+        icon: <Activity className="text-white/40" />,
+        color: 'white',
         hotkey: 'W'
     },
     {
         id: 'users',
-        title: 'Student Ops',
-        desc: 'Search & manage user cognitive profiles.',
+        title: 'User Control',
+        desc: 'Manage aspirants and cognitive profiles.',
         href: '/admin/users',
         icon: <Users className="text-indigo-400" />,
         color: 'indigo',
@@ -45,141 +45,194 @@ const ADMIN_MODULES = [
         id: 'vault',
         title: 'Intel Browser',
         desc: 'Search, filter and edit card repository.',
-        href: '/admin/vault/browser',
-        icon: <Database className="text-emerald-400" />,
-        color: 'emerald',
-        hotkey: 'B'
+        href: '/admin/vault',
+        icon: <Database className="text-white/40" />,
+        color: 'white',
+        hotkey: 'V'
     },
     {
-        id: 'oracle',
-        title: 'Oracle Engine',
-        desc: 'Engine backtesting & theme predictions.',
-        href: '/admin/oracle',
-        icon: <BrainCircuit className="text-amber-400" />,
-        color: 'amber',
-        hotkey: 'O'
+        id: 'review',
+        title: 'Intel Review',
+        desc: 'Verify and approve AI-extracted content.',
+        href: '/admin/review',
+        icon: <CheckCircle2 className="text-indigo-400" />,
+        color: 'indigo',
+        hotkey: 'R'
+    },
+    {
+        id: 'processor',
+        title: 'Neural Processor',
+        desc: 'AI Synthesis & Card Generation Queue.',
+        href: '/admin/processor',
+        icon: <BrainCircuit className="text-white/40" />,
+        color: 'white',
+        hotkey: 'P'
     },
     {
         id: 'ingest',
         title: 'Intelligence Ingest',
         desc: 'Batch upload and AI card generation.',
         href: '/admin/ingest',
-        icon: <Zap className="text-sky-400" />,
-        color: 'sky',
+        icon: <Zap className="text-indigo-400" />,
+        color: 'indigo',
         hotkey: 'I'
+    },
+    {
+        id: 'sources',
+        title: 'Source Archive',
+        desc: 'Manage uploaded PDFs and materials.',
+        href: '/admin/sources',
+        icon: <FileSearch className="text-white/40" />,
+        color: 'white',
+        hotkey: 'A'
     },
     {
         id: 'factory',
         title: 'Content Factory',
-        desc: 'Autonomous AI Subject Flashcard Generation.',
+        desc: 'Manual card creation & template design.',
         href: '/admin/content-factory',
-        icon: <Zap className="text-emerald-500" />,
-        color: 'emerald',
+        icon: <Zap className="text-indigo-400" />,
+        color: 'indigo',
         hotkey: 'F'
+    },
+    {
+        id: 'news',
+        title: 'News Pulse',
+        desc: 'Manage RSS feeds & global news sync.',
+        href: '/admin/news',
+        icon: <LayoutDashboard className="text-white/40" />,
+        color: 'white',
+        hotkey: 'N'
+    },
+    {
+        id: 'oracle',
+        title: 'Oracle Engine',
+        desc: 'Engine backtesting & theme predictions.',
+        href: '/admin/oracle',
+        icon: <BrainCircuit className="text-indigo-400" />,
+        color: 'indigo',
+        hotkey: 'O'
+    },
+    {
+        id: 'feedback',
+        title: 'User Feedback',
+        desc: 'Monitor support tickets & user reports.',
+        href: '/admin/feedback',
+        icon: <Activity className="text-white/40" />,
+        color: 'white',
+        hotkey: 'B'
     },
     {
         id: 'settings',
         title: 'System Settings',
         desc: 'Global AI & engine tactical overrides.',
         href: '/admin/settings',
-        icon: <Settings className="text-slate-400" />,
-        color: 'slate',
+        icon: <Settings className="text-indigo-400" />,
+        color: 'indigo',
         hotkey: 'S'
     }
 ];
 
 export default function AdminDashboardPage() {
     return (
-        <div className="w-full min-h-screen bg-[#050505] text-white p-6 md:p-12 relative overflow-hidden">
-            {/* Ambient Base Layer */}
-            <div className="fixed inset-0 z-0 pointer-events-none opacity-[0.03]"
-                style={{ backgroundImage: 'linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
-
-            <div className="relative z-10 max-w-7xl mx-auto">
-                <header className="mb-16">
-                    <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center gap-3">
-                            <span className="px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-white/40 text-[9px] font-black uppercase tracking-[0.2em]">Authorized Access Only</span>
-                            <div className="h-px w-12 bg-white/10"></div>
-                            <span className="text-[9px] font-black text-emerald-500 uppercase tracking-widest flex items-center gap-1">
-                                <span className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse"></span>
-                                Nexus Secure
-                            </span>
+        <div className="w-full relative">
+            <header className="mb-20">
+                <div className="flex items-center justify-between mb-8">
+                    <div className="flex items-center gap-4">
+                        <div className="px-3 py-1 rounded-full glass-panel border-indigo-500/20 bg-indigo-500/5">
+                            <span className="font-caps text-[9px] text-indigo-400 tracking-[0.3em] font-black uppercase">SYSTEM_STATE:STABLE</span>
                         </div>
+                        <div className="h-[1px] w-12 bg-white/10"></div>
+                        <span className="font-caps text-[9px] font-black text-indigo-400/60 uppercase tracking-[0.3em] flex items-center gap-2">
+                            <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse shadow-[0_0_8px_#6366f1]"></span>
+                            NEXUS SECURE_NODE
+                        </span>
+                    </div>
 
-                        <div className="flex items-center gap-4">
-                            <SyncTrigger />
+                    <div className="flex items-center gap-6">
+                        <SyncTrigger />
+                        <div className="text-right border-l border-white/10 pl-6">
+                            <p className="font-caps text-[9px] font-black text-white/20 uppercase tracking-[0.4em] mb-1">CORTEX_VER</p>
+                            <p className="font-caps text-[12px] font-black text-white tracking-widest">4.2.0-EXEC</p>
                         </div>
                     </div>
-                    <div className="flex justify-between items-end">
-                        <h1 className="text-5xl font-black uppercase tracking-tighter">
-                            Command <span className="text-white/20">Suite</span>
-                        </h1>
-                        <div className="text-right">
-                            <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em]">System Version</p>
-                            <p className="text-sm font-black text-white">2.8.0-PROPER</p>
-                        </div>
-                    </div>
-                </header>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {ADMIN_MODULES.map((module, idx) => (
-                        <motion.div
-                            key={module.id}
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: idx * 0.05 }}
-                        >
-                            <Link href={module.href} className="group block h-full">
-                                <div className="h-full bg-[#0c0c0c] border border-white/10 rounded-3xl p-8 hover:border-white/20 hover:bg-[#111] transition-all relative overflow-hidden flex flex-col justify-between">
-                                    {/* Design Accents */}
-                                    <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:opacity-30 transition-opacity">
-                                        <span className="text-6xl font-black italic select-none">0{idx + 1}</span>
-                                    </div>
-                                    <div className={`absolute bottom-0 right-0 w-32 h-32 bg-${module.color}-500 blur-3xl opacity-0 group-hover:opacity-5 transition-opacity rounded-full translate-x-10 translate-y-10`} />
-
-                                    <div>
-                                        <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-center mb-10 group-hover:scale-110 transition-transform">
-                                            {module.icon}
-                                        </div>
-                                        <h3 className="text-xl font-black uppercase tracking-wider mb-2 group-hover:translate-x-1 transition-transform">
-                                            {module.title}
-                                        </h3>
-                                        <p className="text-white/40 text-[11px] font-bold uppercase tracking-widest leading-relaxed">
-                                            {module.desc}
-                                        </p>
-                                    </div>
-
-                                    <div className="mt-12 flex items-center justify-between">
-                                        <span className="text-[9px] font-black text-white/20 border border-white/10 px-2 py-1 rounded">
-                                            HK / {module.hotkey}
-                                        </span>
-                                        <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-white group-hover:text-black transition-all">
-                                            <ChevronRight size={16} />
-                                        </div>
-                                    </div>
-                                </div>
-                            </Link>
-                        </motion.div>
-                    ))}
                 </div>
 
-                <footer className="mt-20 pt-10 border-t border-white/5 flex justify-between items-center text-white/20">
-                    <p className="text-[10px] font-black uppercase tracking-widest">JourneyOS Intelligence Network</p>
-                    <div className="flex gap-8">
-                        <div className="flex flex-col items-end">
-                            <span className="text-[8px] font-black uppercase mb-1">Cortex Load</span>
-                            <div className="w-20 h-1 bg-white/5 rounded-full overflow-hidden">
-                                <motion.div
-                                    initial={{ width: 0 }}
-                                    animate={{ width: '42%' }}
-                                    className="h-full bg-emerald-500"
-                                />
+                <div className="flex items-end justify-between">
+                    <div>
+                        <h1 className="text-6xl font-bold font-outfit text-white tracking-tighter uppercase leading-none mb-4">
+                            Command <span className="text-white/10">Suite</span>
+                        </h1>
+                        <p className="text-[13px] font-medium text-white/40 tracking-tight max-w-xl">
+                            Strategic oversight and neural orchestration. Authorized access to global intelligence streams and automated generation protocols.
+                        </p>
+                    </div>
+                </div>
+            </header>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {ADMIN_MODULES.map((module, idx) => (
+                    <motion.div
+                        key={module.id}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: idx * 0.05 }}
+                    >
+                        <Link href={module.href} className="group block h-full">
+                            <div className="h-full glass-card-premium border-white/[0.03] p-8 hover:border-indigo-500/30 transition-all relative overflow-hidden flex flex-col justify-between min-h-[280px]">
+                                {/* Design Accents */}
+                                <div className="absolute top-0 right-0 p-8 opacity-[0.03] group-hover:opacity-[0.1] transition-opacity">
+                                    <span className="text-8xl font-black italic select-none font-outfit">0{idx + 1}</span>
+                                </div>
+                                <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-indigo-500/10 blur-[80px] opacity-0 group-hover:opacity-100 transition-opacity rounded-full" />
+
+                                <div>
+                                    <div className="w-16 h-16 rounded-[24px] glass-panel border-white/10 flex items-center justify-center mb-10 group-hover:scale-110 group-hover:bg-indigo-500/5 group-hover:border-indigo-500/30 transition-all shadow-[0_0_30px_rgba(0,0,0,0.3)]">
+                                        {cloneElement(module.icon as ReactElement, { size: 28, className: 'text-white' } as any)}
+                                    </div>
+                                    <h3 className="text-xl font-bold font-outfit text-white uppercase tracking-tight mb-3 group-hover:translate-x-1 transition-transform">
+                                        {module.title}
+                                    </h3>
+                                    <p className="text-white/40 text-[12px] font-medium leading-relaxed tracking-tight group-hover:text-white/60 transition-colors">
+                                        {module.desc}
+                                    </p>
+                                </div>
+
+                                <div className="mt-12 flex items-center justify-between relative z-10">
+                                    <div className="flex items-center gap-2">
+                                        <span className="font-caps text-[9px] font-black text-white/20 border border-white/5 bg-white/[0.02] px-2.5 py-1 rounded-lg uppercase tracking-widest group-hover:text-indigo-400 group-hover:border-indigo-400/30 transition-all">
+                                            HK / {module.hotkey}
+                                        </span>
+                                    </div>
+                                    <div className="w-10 h-10 rounded-full glass-panel border-white/10 flex items-center justify-center group-hover:bg-white group-hover:text-black transition-all shadow-lg group-active:scale-90">
+                                        <ChevronRight size={18} />
+                                    </div>
+                                </div>
                             </div>
+                        </Link>
+                    </motion.div>
+                ))}
+            </div>
+
+            <footer className="mt-32 pt-12 border-t border-white/[0.05] flex justify-between items-center text-white/20">
+                <div className="flex items-center gap-6">
+                    <p className="font-caps text-[10px] font-black uppercase tracking-[0.4em]">JOURNEYOS_INTELLIGENCE_NETWORK</p>
+                    <div className="h-4 w-[1px] bg-white/10"></div>
+                    <p className="font-caps text-[10px] font-black uppercase tracking-[0.4em] text-white/10">EST. 2026</p>
+                </div>
+                <div className="flex gap-12">
+                    <div className="flex flex-col items-end">
+                        <span className="font-caps text-[8px] font-black uppercase tracking-widest mb-2">CORTEX LOAD</span>
+                        <div className="w-32 h-1.5 bg-white/[0.03] rounded-full overflow-hidden border border-white/[0.05]">
+                            <motion.div
+                                initial={{ width: 0 }}
+                                animate={{ width: '42%' }}
+                                className="h-full bg-indigo-500 shadow-[0_0_10px_#6366f1]"
+                            />
                         </div>
                     </div>
-                </footer>
-            </div>
+                </div>
+            </footer>
         </div>
     );
 }
@@ -205,31 +258,29 @@ function SyncTrigger() {
     };
 
     return (
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-6">
             {lastSync && (
-                <div className="flex flex-col items-end mr-2 animate-in fade-in slide-in-from-right-2">
-                    <span className="text-[9px] font-black text-emerald-500 uppercase tracking-widest">Cycle Complete</span>
-                    <span className="text-[8px] font-bold text-white/20 uppercase">+{lastSync.count} Units @ {lastSync.time}</span>
+                <div className="flex flex-col items-end animate-in fade-in slide-in-from-right-4 transition-all">
+                    <span className="font-caps text-[9px] font-black text-indigo-400 uppercase tracking-widest">CYCLE_COMPLETE</span>
+                    <span className="font-caps text-[8px] font-bold text-white/20 uppercase tracking-widest">+{lastSync.count} UNITS @ {lastSync.time}</span>
                 </div>
             )}
             <button
                 onClick={handleSync}
                 disabled={isSyncing}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl border transition-all ${isSyncing
-                    ? 'bg-white/5 border-white/10 text-white/20 cursor-wait'
-                    : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20 hover:border-emerald-500/40'
+                className={`flex items-center gap-3 px-6 py-3 rounded-[18px] border transition-all active:scale-95 ${isSyncing
+                    ? 'glass-panel border-white/10 text-white/20 cursor-wait'
+                    : 'glass-panel border-indigo-500/30 bg-indigo-500/5 text-indigo-400 hover:bg-indigo-500/10 hover:border-indigo-500/50 hover:shadow-[0_0_30px_rgba(99,102,241,0.15)] shadow-lg'
                     }`}
             >
-                <RefreshCw size={12} className={isSyncing ? 'animate-spin' : ''} />
-                <span className="text-[10px] font-black uppercase tracking-widest">
-                    {isSyncing ? 'Syncing Intel...' : 'Sync News Pulse'}
+                <RefreshCw size={14} className={isSyncing ? 'animate-spin' : ''} />
+                <span className="font-caps text-[11px] font-black uppercase tracking-[0.2em]">
+                    {isSyncing ? 'SYNCING_INTEL...' : 'SYNC_NEWS_PULSE'}
                 </span>
             </button>
         </div>
     );
 }
-
-
 
 function ChevronRight({ size }: { size: number }) {
     return (

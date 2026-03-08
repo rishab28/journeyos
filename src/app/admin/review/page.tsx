@@ -119,20 +119,20 @@ export default function ReviewPage() {
     };
 
     const statusTabs = [
-        { val: CardStatus.ADMIN_REVIEW, label: 'Admin Review', color: 'text-amber-400' },
+        { val: CardStatus.ADMIN_REVIEW, label: 'Review', color: 'text-indigo-400' },
         { val: CardStatus.DRAFT, label: 'Drafts', color: 'text-white/50' },
-        { val: CardStatus.COMMUNITY_REVIEW, label: 'Community', color: 'text-blue-400' },
-        { val: CardStatus.LIVE, label: 'Live', color: 'text-emerald-400' },
-        { val: CardStatus.ARCHIVED, label: 'Archived', color: 'text-rose-400/60' },
+        { val: CardStatus.COMMUNITY_REVIEW, label: 'Community', color: 'text-white/60' },
+        { val: CardStatus.LIVE, label: 'Live', color: 'text-white' },
+        { val: CardStatus.ARCHIVED, label: 'Archived', color: 'text-white/20' },
     ];
 
     return (
         <div className="space-y-5">
             <div className="flex items-end justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold text-white/90">✅ Review Dashboard</h1>
-                    <p className="text-sm text-white/40 mt-1">
-                        {total} cards · Page {page}/{totalPages || 1}
+                    <h1 className="text-4xl font-black uppercase tracking-tighter">Review <span className="text-white/20">Dashboard</span></h1>
+                    <p className="text-[10px] font-black text-white/40 uppercase tracking-widest mt-2">
+                        {total} nodes · Page {page}/{totalPages || 1}
                     </p>
                 </div>
 
@@ -142,16 +142,15 @@ export default function ReviewPage() {
                         <span className="text-xs text-white/40 mr-2">{selectedIds.size} selected</span>
                         <button
                             onClick={handleBatchApprove}
-                            className="px-4 py-2 rounded-xl text-xs font-bold text-white transition-all"
-                            style={{ background: 'linear-gradient(135deg, #059669, #10b981)', boxShadow: '0 4px 15px rgba(5,150,105,0.3)' }}
+                            className="px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest bg-indigo-600 text-white transition-all shadow-lg shadow-indigo-500/20"
                         >
-                            🚀 Approve & Go Live
+                            Propagate Intelligence
                         </button>
                         <button
                             onClick={handleBatchReject}
-                            className="px-4 py-2 rounded-xl text-xs font-bold bg-rose-600/20 text-rose-400 hover:bg-rose-600/30 transition-all"
+                            className="px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest bg-white/5 border border-white/10 text-white/40 hover:text-white transition-all"
                         >
-                            Archive
+                            Purge
                         </button>
                     </motion.div>
                 )}
@@ -240,11 +239,11 @@ export default function ReviewPage() {
                                         className="rounded bg-white/10 border-white/20 accent-violet-500"
                                     />
                                 </th>
-                                <th className="pb-2 text-left text-[10px] font-semibold text-white/30 uppercase tracking-wider">Type</th>
-                                <th className="pb-2 text-left text-[10px] font-semibold text-white/30 uppercase tracking-wider">Subject</th>
-                                <th className="pb-2 text-left text-[10px] font-semibold text-white/30 uppercase tracking-wider">Question</th>
-                                <th className="pb-2 text-left text-[10px] font-semibold text-white/30 uppercase tracking-wider">Diff</th>
-                                <th className="pb-2 text-left text-[10px] font-semibold text-white/30 uppercase tracking-wider">Tags</th>
+                                <th className="pb-4 text-left text-[9px] font-black text-white/20 uppercase tracking-[0.2em]">Sect</th>
+                                <th className="pb-4 text-left text-[9px] font-black text-white/20 uppercase tracking-[0.2em]">Subject</th>
+                                <th className="pb-4 text-left text-[9px] font-black text-white/20 uppercase tracking-[0.2em]">Intelligence Node</th>
+                                <th className="pb-4 text-left text-[9px] font-black text-white/20 uppercase tracking-[0.2em]">Intensity</th>
+                                <th className="pb-4 text-left text-[9px] font-black text-white/20 uppercase tracking-[0.2em]">Context</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -259,9 +258,9 @@ export default function ReviewPage() {
                                         />
                                     </td>
                                     <td className="py-3 pr-3">
-                                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${card.type === 'MCQ' ? 'bg-blue-500/15 text-blue-400' :
-                                            card.type === 'PYQ' ? 'bg-orange-500/15 text-orange-400' :
-                                                'bg-violet-500/15 text-violet-400'
+                                        <span className={`text-[9px] font-black px-2 py-0.5 rounded leading-none ${card.type === 'MCQ' ? 'bg-indigo-500/10 text-indigo-400' :
+                                            card.type === 'PYQ' ? 'bg-white/10 text-white' :
+                                                'bg-white/5 text-white/40'
                                             }`}>
                                             {card.type}
                                         </span>
@@ -294,9 +293,9 @@ export default function ReviewPage() {
                                         </AnimatePresence>
                                     </td>
                                     <td className="py-3 pr-3">
-                                        <span className={`text-[10px] font-semibold ${card.difficulty === 'HARD' ? 'text-rose-400/70' :
-                                            card.difficulty === 'EASY' ? 'text-emerald-400/70' :
-                                                'text-amber-400/70'
+                                        <span className={`text-[9px] font-black uppercase tracking-widest ${card.difficulty === 'HARD' ? 'text-white' :
+                                            card.difficulty === 'EASY' ? 'text-white/40' :
+                                                'text-white/70'
                                             }`}>
                                             {card.difficulty}
                                         </span>

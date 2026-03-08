@@ -71,7 +71,7 @@ export async function askGlobalAI(query: string): Promise<GlobalSearchResponse> 
         // 4. Synthesize the Answer using Gemini 1.5 Flash
         const genAI = getGeminiClient();
         const model = genAI.getGenerativeModel({
-            model: 'gemini-2.5-flash',
+            model: 'gemini-2.0-flash',
             generationConfig: {
                 temperature: 0.3,
                 maxOutputTokens: 1500,

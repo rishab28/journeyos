@@ -46,7 +46,7 @@ export default function OracleMentor() {
     const pulseStyles = {
         shortcut: 'bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-amber-900/40 via-black/40 to-black/40 border-amber-500/30 text-amber-200',
         warning: 'bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-rose-900/40 via-black/40 to-black/40 border-rose-500/30 text-rose-200',
-        motivation: 'bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-cyan-900/40 via-black/40 to-black/40 border-cyan-500/30 text-cyan-200',
+        motivation: 'bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-900/40 via-black/40 to-black/40 border-indigo-500/30 text-indigo-200',
     };
 
     return (

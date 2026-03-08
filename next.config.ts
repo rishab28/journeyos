@@ -10,14 +10,15 @@ const withPWA = withPWAInit({
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  // Allow Turbopack to coexist with webpack-based next-pwa
-  turbopack: {},
+  serverExternalPackages: ['pdf-parse', 'pdf-lib'],
   // Allow large PDF uploads via Server Actions
   experimental: {
     serverActions: {
       bodySizeLimit: '100mb',
     },
   },
+  // @ts-ignore - Silence Turbopack/Webpack conflict
+  turbopack: {},
 };
 
 export default withPWA(nextConfig);

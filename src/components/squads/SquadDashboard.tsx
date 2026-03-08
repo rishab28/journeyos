@@ -121,7 +121,7 @@ export default function SquadDashboard() {
                     </button>
                     <button
                         onClick={() => setShowCreateModal(true)}
-                        className="p-2 rounded-full bg-[#00ffcc]/10 border border-[#00ffcc]/20 text-[#00ffcc] hover:bg-[#00ffcc]/20 transition-all shadow-[0_0_10px_#00ffcc20]"
+                        className="p-2 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 hover:bg-indigo-500/20 transition-all shadow-[0_0_10px_rgba(99,102,241,0.2)]"
                     >
                         <Plus size={18} />
                     </button>
@@ -241,7 +241,7 @@ export default function SquadDashboard() {
                                     <input
                                         autoFocus
                                         placeholder="Squad Name (e.g. IAS Warriors)"
-                                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#00ffcc]/40"
+                                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-indigo-500/40"
                                         value={squadName}
                                         onChange={(e) => setSquadName(e.target.value)}
                                     />
@@ -257,13 +257,13 @@ export default function SquadDashboard() {
                                     <input
                                         autoFocus
                                         placeholder="Enter Invite Code"
-                                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#00ffcc]/40 uppercase"
+                                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-indigo-500/40 uppercase"
                                         value={inviteCode}
                                         onChange={(e) => setInviteCode(e.target.value)}
                                     />
                                     <button
                                         onClick={handleJoinSquad}
-                                        className="w-full bg-[#00ffcc] text-black py-4 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-[#00ffcc]/90 transition-all shadow-[0_0_20px_#00ffcc30]"
+                                        className="w-full bg-indigo-500 text-white py-4 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-indigo-600 transition-all shadow-[0_0_20px_rgba(99,102,241,0.3)]"
                                     >
                                         Sync with Collective
                                     </button>

@@ -48,10 +48,10 @@ export default function ContentFactoryPage() {
                     </Link>
                     <div>
                         <h1 className="text-3xl font-black uppercase tracking-tight flex items-center gap-3">
-                            <Factory className="text-emerald-500" />
+                            <Factory className="text-indigo-500" />
                             Content <span className="text-white/30">Factory</span>
                         </h1>
-                        <p className="text-[11px] text-white/40 font-bold tracking-widest uppercase mt-1">Autonomous Quality Generation</p>
+                        <p className="text-[10px] text-white/40 font-black uppercase tracking-[0.3em] mt-1">Autonomous Quality Generation</p>
                     </div>
                 </div>
             </header>
@@ -68,16 +68,16 @@ export default function ContentFactoryPage() {
                                     <h3 className="text-xl font-bold">{subject}</h3>
                                     <p className="text-[10px] text-white/30 uppercase tracking-widest mt-1">Session Yield: {count}</p>
                                 </div>
-                                {currentStatus === 'success' && <CheckCircle2 className="text-emerald-500" size={24} />}
-                                {currentStatus === 'error' && <span className="text-red-500 text-sm font-bold uppercase">Failed</span>}
+                                {currentStatus === 'success' && <CheckCircle2 className="text-indigo-400" size={24} />}
+                                {currentStatus === 'error' && <span className="text-white/20 text-xs font-black uppercase">Failed</span>}
                             </div>
 
                             <button
                                 onClick={() => handleSeed(subject)}
                                 disabled={currentStatus === 'loading'}
-                                className={`w-full py-3 rounded-xl text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${currentStatus === 'loading' ? 'bg-white/5 text-white/30' :
-                                        currentStatus === 'success' ? 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20' :
-                                            'bg-white text-black hover:bg-gray-200'
+                                className={`w-full py-4 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${currentStatus === 'loading' ? 'bg-white/5 text-white/30' :
+                                    currentStatus === 'success' ? 'bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20' :
+                                        'bg-white text-black hover:bg-gray-200'
                                     }`}
                             >
                                 {currentStatus === 'loading' ? (

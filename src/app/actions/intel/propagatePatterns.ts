@@ -1,13 +1,12 @@
 'use server';
 
 // ═══════════════════════════════════════════════════════════
-// JourneyOS — Autonomous Pattern Propagation Engine
+// JourneyOS — Autonomous Pattern Propagation Engine (Nuclear)
 // Scales Oracle insights across the entire Vault via RAG
 // ═══════════════════════════════════════════════════════════
 
 import { createServerSupabaseClient } from '@/lib/core/supabase/server';
-import { generateEmbedding } from '@/lib/core/ai/gemini';
-import { neuralGateway } from '@/lib/core/ai/neuralGateway';
+import * as https from 'https';
 
 interface PropagationResult {
     success: boolean;
@@ -17,42 +16,94 @@ interface PropagationResult {
 }
 
 /**
- * Propagates Oracle patterns from the latest calibration to all related cards.
+ * Nuclear Embedding Generator (DNS-Proof)
+ */
+async function generateEmbeddingNuclear(text: string): Promise<number[]> {
+    const rawKeys = process.env.GOOGLE_GENAI_API_KEY || process.env.GEMINI_API_KEY || '';
+    const apiKeys = rawKeys.split(',').map(k => k.trim()).filter(Boolean);
+    const apiKey = apiKeys[0];
+
+    return new Promise((resolve, reject) => {
+        const data = JSON.stringify({
+            model: "models/text-embedding-004",
+            content: { parts: [{ text }] }
+        });
+
+        const options = {
+            hostname: 'generativelanguage.googleapis.com',
+            port: 443,
+            path: `/v1beta/models/text-embedding-004:embedContent?key=${apiKey}`,
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Content-Length': data.length
+            }
+        };
+
+        const req = https.request(options, (res) => {
+            let body = '';
+            res.on('data', (chunk) => body += chunk);
+            res.on('end', () => {
+                try {
+                    const json = JSON.parse(body);
+                    if (json.embedding?.values) {
+                        resolve(json.embedding.values);
+                    } else {
+                        reject(new Error(`Embedding failed: ${body}`));
+                    }
+                } catch (e) {
+                    reject(e);
+                }
+            });
+        });
+
+        req.on('error', (e) => reject(e));
+        req.write(data);
+        req.end();
+    });
+}
+
+/**
+ * Propagates Oracle patterns from the latest chronology to all related cards.
  */
 export async function propagateOraclePatterns(): Promise<PropagationResult> {
     try {
-        const supabase = await createServerSupabaseClient();
+        const supabase = createServerSupabaseClient();
 
-        // 1. Fetch the latest Oracle calibration
-        const { data: latestCal, error: calError } = await supabase
-            .from('oracle_calibrations')
+        // 1. Fetch the latest Oracle Chronology (Year 2025/2026 predictions)
+        const { data: chronList, error: chronError } = await supabase
+            .from('oracle_chronologies')
             .select('*')
             .order('year', { ascending: false })
-            .limit(1)
-            .single();
+            .limit(1);
 
-        if (calError || !latestCal) {
-            return { success: false, message: 'No Oracle calibration found to propagate.', error: calError?.message };
+        const latestChron = chronList?.[0];
+
+        if (chronError || !latestChron) {
+            return { success: false, message: 'No Oracle chronology found to propagate.', error: chronError?.message };
         }
 
-        const themes = latestCal.predicted_themes || [];
-        if (themes.length === 0) {
-            return { success: false, message: 'Latest calibration has no predicted themes.' };
+        // Themes come from the shadow_matrix (predictions for the future)
+        const shadowMatrix = latestChron.shadow_matrix || [];
+        if (shadowMatrix.length === 0) {
+            return { success: false, message: 'Latest chronology has no shadow matrix (predictions).' };
         }
 
-        console.log(`[Propagation] Initiating ripple for ${themes.length} themes...`);
+        console.log(`[Propagation] Initiating ripple for ${shadowMatrix.length} lethal themes...`);
         let totalAffected = 0;
 
-        // 2. For each theme, perform a vector search and update related cards
-        for (const theme of themes) {
-            console.log(`[Propagation] Processing theme: ${theme}`);
-            const themeEmbedding = await generateEmbedding(theme);
+        // 2. For each theme in the shadow matrix, perform a vector search and update related cards
+        for (const item of shadowMatrix) {
+            const theme = item.target_hierarchy || item.theme;
+            if (!theme) continue;
+
+            console.log(`[Propagation] Processing lethal theme: ${theme}`);
+            const themeEmbedding = await generateEmbeddingNuclear(theme);
 
             // Fetch matching cards using vector similarity
-            // Using RPC 'match_cards' which should exist for RAG
             const { data: matches, error: matchError } = await supabase.rpc('match_cards', {
                 query_embedding: themeEmbedding,
-                match_threshold: 0.78, // High threshold for precision
+                match_threshold: 0.75, // Lower threshold slightly for broader impact
                 match_count: 50
             });
 
@@ -61,7 +112,10 @@ export async function propagateOraclePatterns(): Promise<PropagationResult> {
                 continue;
             }
 
-            if (!matches || matches.length === 0) continue;
+            if (!matches || matches.length === 0) {
+                console.log(`[Propagation] No matches for theme "${theme}". Synthesis will handle this.`);
+                continue;
+            }
 
             const cardIds = matches.map((m: any) => m.id);
 
@@ -69,9 +123,9 @@ export async function propagateOraclePatterns(): Promise<PropagationResult> {
             const { count, error: updateError } = await supabase
                 .from('cards')
                 .update({
-                    oracle_confidence: 90,
-                    trend_evolution: `Directly linked to Oracle's ${latestCal.year} high-lethality pattern: "${theme}".`,
-                    priority_score: 9, // Elevated priority for sniped content
+                    oracle_confidence: Math.max(90, item.lethality_score || 90),
+                    trend_evolution: `Oracle Prediction [Year ${latestChron.year + 1}]: High-lethality pattern detected. Reasoning: ${latestChron.reasoning_summary || 'Pattern evolution shift'}.`,
+                    priority_score: 10, // Extreme priority for predicted content
                     updated_at: new Date().toISOString()
                 })
                 .in('id', cardIds);
@@ -86,16 +140,16 @@ export async function propagateOraclePatterns(): Promise<PropagationResult> {
 
         // 4. Update System IQ Telemetry
         await supabase.from('system_iq_evolution').insert({
-            pattern_accuracy: latestCal.match_percentage || 85,
-            causal_density: themes.length,
-            node_coverage: Math.min(100, (totalAffected / 1000) * 100), // Simple heuristic
-            reasoning_shift: `Autonomous Propagation cycle completed. Affected ${totalAffected} nodes.`,
-            logic_snapshot: latestCal.learned_logic_weights
+            pattern_accuracy: latestChron.accuracy_score || 85,
+            causal_density: shadowMatrix.length,
+            node_coverage: Math.min(100, (totalAffected / 1000) * 100),
+            reasoning_shift: `Nuclear Propagation cycle completed for Year ${latestChron.year + 1}. Affected ${totalAffected} nodes.`,
+            logic_snapshot: latestChron.learned_logic_weights
         });
 
         return {
             success: true,
-            message: `Neural Ripple Complete. Oracle insights successfully propagated to ${totalAffected} intelligence nodes.`,
+            message: `Neural Ripple Complete. Oracle predictions for ${latestChron.year + 1} successfully propagated to ${totalAffected} nodes.`,
             affectedCards: totalAffected
         };
 

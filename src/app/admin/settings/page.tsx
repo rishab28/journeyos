@@ -90,7 +90,7 @@ export default function TacticalSettingsPage() {
                     className="bg-[#0c0c0c] border border-white/10 rounded-[2.5rem] p-8"
                 >
                     <div className="flex items-center gap-4 mb-10">
-                        <div className="w-12 h-12 rounded-2xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400">
+                        <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
                             <Zap size={22} />
                         </div>
                         <div>
@@ -106,7 +106,7 @@ export default function TacticalSettingsPage() {
                                 <select
                                     value={configs.ai_gateway?.provider || 'gemini'}
                                     onChange={(e) => updateNestedValue('ai_gateway', 'provider', e.target.value)}
-                                    className="w-full bg-white/5 border border-white/5 rounded-2xl p-4 text-xs font-bold focus:outline-none focus:border-sky-500/50"
+                                    className="w-full bg-white/5 border border-white/5 rounded-2xl p-4 text-xs font-bold focus:outline-none focus:border-indigo-500/50"
                                 >
                                     <option value="gemini">Google Gemini</option>
                                     <option value="claude">Anthropic Claude</option>
@@ -119,7 +119,7 @@ export default function TacticalSettingsPage() {
                                     type="text"
                                     value={configs.ai_gateway?.model || ''}
                                     onChange={(e) => updateNestedValue('ai_gateway', 'model', e.target.value)}
-                                    className="w-full bg-white/5 border border-white/5 rounded-2xl p-4 text-xs font-bold focus:outline-none focus:border-sky-500/50"
+                                    className="w-full bg-white/5 border border-white/5 rounded-2xl p-4 text-xs font-bold focus:outline-none focus:border-indigo-500/50"
                                 />
                             </div>
                         </div>
@@ -130,7 +130,7 @@ export default function TacticalSettingsPage() {
                                 min="0" max="1" step="0.1"
                                 value={configs.ai_gateway?.temperature}
                                 onChange={(e) => updateNestedValue('ai_gateway', 'temperature', parseFloat(e.target.value))}
-                                className="w-full h-1.5 bg-white/5 rounded-lg appearance-none cursor-pointer accent-sky-500"
+                                className="w-full h-1.5 bg-white/5 rounded-lg appearance-none cursor-pointer accent-indigo-500"
                             />
                             <div className="flex justify-between text-[10px] font-bold text-white/20 mt-1 uppercase tracking-widest">
                                 <span>Precise (0.0)</span>
@@ -143,7 +143,7 @@ export default function TacticalSettingsPage() {
                     <button
                         onClick={() => handleSave('ai_gateway', configs.ai_gateway)}
                         disabled={isSaving}
-                        className="w-full mt-10 bg-sky-600 hover:bg-sky-500 text-white font-black uppercase tracking-widest py-4 rounded-2xl transition-all flex items-center justify-center gap-3 disabled:opacity-50"
+                        className="w-full mt-10 bg-indigo-600 hover:bg-indigo-500 text-white font-black uppercase tracking-widest py-4 rounded-2xl transition-all flex items-center justify-center gap-3 disabled:opacity-50"
                     >
                         <Save size={18} /> Apply Gateway Config
                     </button>
@@ -157,7 +157,7 @@ export default function TacticalSettingsPage() {
                     className="bg-[#0c0c0c] border border-white/10 rounded-[2.5rem] p-8"
                 >
                     <div className="flex items-center gap-4 mb-10">
-                        <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
+                        <div className="w-12 h-12 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center text-white/80">
                             <BrainCircuit size={22} />
                         </div>
                         <div>
@@ -177,7 +177,7 @@ export default function TacticalSettingsPage() {
                                 step="0.1"
                                 value={configs.srs_calibration?.base_ease || 2.5}
                                 onChange={(e) => updateNestedValue('srs_calibration', 'base_ease', parseFloat(e.target.value))}
-                                className="w-20 bg-white/5 border border-white/10 rounded-xl p-2 text-center text-sm font-black focus:outline-none focus:border-amber-500/50"
+                                className="w-20 bg-white/5 border border-white/10 rounded-xl p-2 text-center text-sm font-black focus:outline-none focus:border-white/50"
                             />
                         </div>
 
@@ -193,7 +193,7 @@ export default function TacticalSettingsPage() {
                                     min="0.5" max="2.0" step="0.1"
                                     value={configs.srs_calibration?.interval_modifier || 1.0}
                                     onChange={(e) => updateNestedValue('srs_calibration', 'interval_modifier', parseFloat(e.target.value))}
-                                    className="w-32 h-1.5 bg-white/5 rounded-lg appearance-none cursor-pointer accent-amber-500"
+                                    className="w-32 h-1.5 bg-white/5 rounded-lg appearance-none cursor-pointer accent-white"
                                 />
                                 <span className="text-[10px] font-black text-emerald-500 uppercase">Chill</span>
                             </div>
@@ -208,7 +208,7 @@ export default function TacticalSettingsPage() {
                     <button
                         onClick={() => handleSave('srs_calibration', configs.srs_calibration)}
                         disabled={isSaving}
-                        className="w-full mt-8 bg-amber-600 hover:bg-amber-500 text-white font-black uppercase tracking-widest py-4 rounded-2xl transition-all flex items-center justify-center gap-3 disabled:opacity-50"
+                        className="w-full mt-8 bg-white/10 hover:bg-white/20 text-white font-black uppercase tracking-widest py-4 rounded-2xl transition-all flex items-center justify-center gap-3 disabled:opacity-50"
                     >
                         <Save size={18} /> Reschedule Engine
                     </button>
@@ -222,7 +222,7 @@ export default function TacticalSettingsPage() {
                     className="lg:col-span-2 bg-[#0c0c0c] border border-white/10 rounded-[2.5rem] p-8 flex flex-col md:flex-row items-center justify-between gap-8"
                 >
                     <div className="flex items-center gap-6">
-                        <div className="w-16 h-16 rounded-[2rem] bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shadow-2xl">
+                        <div className="w-16 h-16 rounded-[2rem] bg-white/10 border border-white/20 flex items-center justify-center text-white shadow-2xl">
                             <ShieldCheck size={32} />
                         </div>
                         <div>
@@ -234,7 +234,7 @@ export default function TacticalSettingsPage() {
                     <div className="flex gap-4 w-full md:w-auto">
                         <div className="flex-1 md:w-48 p-4 bg-white/[0.02] border border-white/5 rounded-2xl text-center">
                             <p className="text-[8px] font-black text-white/20 uppercase tracking-[0.4em] mb-1">Latency</p>
-                            <p className="text-xl font-black text-emerald-400">142ms</p>
+                            <p className="text-xl font-black text-white">142ms</p>
                         </div>
                         <div className="flex-1 md:w-48 p-4 bg-white/[0.02] border border-white/5 rounded-2xl text-center">
                             <p className="text-[8px] font-black text-white/20 uppercase tracking-[0.4em] mb-1">Uptime</p>

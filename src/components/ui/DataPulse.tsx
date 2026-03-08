@@ -3,7 +3,7 @@ import { cn } from '@/lib/core/utils';
 import { motion } from 'framer-motion';
 
 interface DataPulseProps extends React.HTMLAttributes<HTMLDivElement> {
-    color?: 'emerald' | 'blue' | 'purple' | 'rose' | 'amber';
+    color?: 'emerald' | 'blue' | 'purple' | 'rose' | 'amber' | 'indigo';
     size?: 'sm' | 'md' | 'lg';
 }
 
@@ -11,11 +11,12 @@ export const DataPulse = React.forwardRef<HTMLDivElement, DataPulseProps>(
     ({ className, color = 'emerald', size = 'md', ...props }, ref) => {
 
         const colors = {
-            emerald: "bg-emerald-500",
-            blue: "bg-blue-500",
+            emerald: "bg-indigo-500",
+            blue: "bg-indigo-400",
             purple: "bg-purple-500",
             rose: "bg-rose-500",
-            amber: "bg-amber-500"
+            amber: "bg-white/40",
+            indigo: "bg-indigo-500"
         };
 
         const sizes = {

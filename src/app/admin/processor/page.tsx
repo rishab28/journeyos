@@ -6,11 +6,11 @@ import { Subject, Domain } from '@/types';
 import {
     fetchPdfSources,
     getPdfDownloadUrl,
+    extractPdfTextServer,
     ingestText,
     markSourceProcessed,
     PdfSource
 } from '@/app/actions/admin';
-import { extractTextFromPDF } from '@/lib/admin/pdfExtractor';
 import { Brain, Cpu, Loader2, CheckCircle, AlertTriangle, Play, Zap, ShieldCheck } from 'lucide-react';
 
 // Client-side chunking helper
@@ -45,7 +45,6 @@ export default function ProcessorPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [processingId, setProcessingId] = useState<string | null>(null);
     const [progress, setProgress] = useState<{ current: number; total: number; step: string }>({ current: 0, total: 0, step: '' });
-    const [logs, setLogs] = useState<string[]>([]);
 
     useEffect(() => {
         loadSources();
@@ -62,7 +61,12 @@ export default function ProcessorPage() {
         setIsLoading(false);
     };
 
-    const addLog = (msg: string) => setLogs(prev => [msg, ...prev].slice(0, 50));
+    const [logs, setLogs] = useState<{ msg: string; time: string }[]>([]);
+
+    const addLog = (msg: string) => {
+        const time = new Date().toLocaleTimeString([], { hour12: false });
+        setLogs(prev => [{ msg, time }, ...prev].slice(0, 50));
+    };
 
     const handleSynthesize = async (source: PdfSource) => {
         if (processingId) return;
@@ -71,20 +75,18 @@ export default function ProcessorPage() {
         addLog(`[System] Initializing Neural Synthesis for: ${source.name}`);
 
         try {
-            // 1. Get signed URL
-            setProgress({ current: 0, total: 0, step: 'Fetching Source' });
-            const urlRes = await getPdfDownloadUrl(source.id);
-            if (!urlRes.success || !urlRes.url) throw new Error(urlRes.error || 'Failed to get download URL');
+            // ── Step 1 & 2: Neural Synthesis (Server-Side) ──
+            setProgress({ current: 0, total: 0, step: 'Synchronizing Intelligence' });
+            addLog(`[PDF] Extracting Neural Data via Secure Tunnel...`);
 
-            // 2. Download and Extract
-            setProgress({ current: 0, total: 0, step: 'Extracting Neural Data' });
-            addLog(`[PDF] Downloading operational data...`);
-            const blobRes = await fetch(urlRes.url);
-            const blob = await blobRes.blob();
-            const file = new File([blob], source.name, { type: 'application/pdf' });
+            // This now runs on the server using our DNS bypass & pdf-parse!
+            const extraction = await extractPdfTextServer(source.id);
+            console.log('[Processor] Extraction Result:', extraction);
 
-            const extraction = await extractTextFromPDF(file);
-            if (!extraction.success) throw new Error(extraction.error || 'Extraction failed');
+            if (!extraction.success || !extraction.text) {
+                console.error('[Processor] Extraction Error Object:', extraction.error);
+                throw new Error(String(extraction.error || 'Extraction failed'));
+            }
             addLog(`[PDF] Extraction complete. Scanned ${extraction.pageCount} pages.`);
 
             // 3. Chunking
@@ -108,7 +110,8 @@ export default function ProcessorPage() {
                     subject: (source.subject as Subject) || Subject.POLITY,
                     topic: source.folder || 'General',
                     examTags: ['UPSC'],
-                    sourcePdf: source.id
+                    sourcePdf: source.id,
+                    sourceType: source.sourceType
                 });
 
                 if (res.success) {
@@ -116,6 +119,12 @@ export default function ProcessorPage() {
                     addLog(`[AI] Linked ${res.cardsCreated} new cards.`);
                 } else {
                     addLog(`[Error] Chunk ${i + 1} failed: ${res.errors?.[0]}`);
+                }
+
+                // ── Cooling Delay (Free Tier Stability) ──
+                if (i < chunks.length - 1) {
+                    addLog(`[System] Cooling down for 5s...`);
+                    await new Promise(r => setTimeout(r, 5000));
                 }
             }
 
@@ -144,10 +153,10 @@ export default function ProcessorPage() {
             <header className="flex justify-between items-end">
                 <div>
                     <h1 className="text-4xl font-black text-white uppercase tracking-tighter flex items-center gap-4">
-                        <Brain className="text-[#00ffcc] w-10 h-10" />
+                        <Brain className="text-white w-10 h-10" />
                         Neural <span className="text-white/20 italic">Processor</span>
                     </h1>
-                    <p className="text-[11px] font-bold text-white/40 uppercase tracking-[0.4em] mt-3 pl-1 italic">
+                    <p className="text-[10px] font-black text-white/40 uppercase tracking-[0.3em] mt-3 pl-1 italic">
                         Phase 2: Synaptic Synthesis & Intelligence Bonding
                     </p>
                 </div>
@@ -155,8 +164,8 @@ export default function ProcessorPage() {
                     <div className="flex flex-col items-end">
                         <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">Pipeline Health</span>
                         <div className="flex items-center gap-2 mt-1">
-                            <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_10px_#10b981]" />
-                            <span className="text-[10px] font-bold text-emerald-500/80 uppercase">AI Load Balanced</span>
+                            <span className="w-2 h-2 rounded-full bg-white shadow-[0_0_10px_rgba(255,255,255,0.2)]" />
+                            <span className="text-[10px] font-black text-white/60 uppercase">AI Load Balanced</span>
                         </div>
                     </div>
                 </div>
@@ -180,7 +189,7 @@ export default function ProcessorPage() {
                                         animate={{ opacity: 1, x: 0 }}
                                         exit={{ opacity: 0, scale: 0.95 }}
                                         className={`group p-6 rounded-[2rem] border transition-all ${processingId === source.id
-                                            ? 'bg-emerald-500/5 border-emerald-500/30 shadow-[0_0_30px_rgba(16,185,129,0.1)]'
+                                            ? 'bg-indigo-500/5 border-indigo-500/30'
                                             : 'bg-white/5 border-white/5 hover:border-white/10'
                                             }`}
                                     >
@@ -192,6 +201,9 @@ export default function ProcessorPage() {
                                                 <div className="overflow-hidden">
                                                     <h3 className="text-sm font-bold text-white/80 truncate group-hover:text-white transition-colors">{source.name}</h3>
                                                     <div className="flex items-center gap-3 mt-1.5">
+                                                        <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-white/10 text-white uppercase tracking-widest">
+                                                            {source.sourceType || 'INTEL'}
+                                                        </span>
                                                         <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-white/5 text-white/40 uppercase tracking-widest">
                                                             {source.subject || 'GS'}
                                                         </span>
@@ -206,31 +218,23 @@ export default function ProcessorPage() {
                                                 {processingId === source.id ? (
                                                     <div className="flex items-center gap-4">
                                                         <div className="text-right">
-                                                            <div className="flex items-center justify-end gap-2 mb-1">
-                                                                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#00ffcc]/10 border border-[#00ffcc]/20 animate-pulse">
-                                                                    <ShieldCheck className="w-2.5 h-2.5 text-[#00ffcc]" />
-                                                                    <span className="text-[8px] font-black text-[#00ffcc] uppercase tracking-widest">Oracle Active</span>
-                                                                </div>
-                                                                <p className="text-[10px] font-black text-[#00ffcc] uppercase tracking-widest leading-none">
-                                                                    Processing
-                                                                </p>
+                                                            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 animate-pulse mb-1">
+                                                                <ShieldCheck className="w-2.5 h-2.5 text-indigo-400" />
+                                                                <span className="text-[8px] font-black text-indigo-400 uppercase tracking-widest">Oracle Active</span>
                                                             </div>
-                                                            <p className="text-[9px] font-bold text-white/20 uppercase">
+                                                            <p className="text-[9px] font-black text-white/40 uppercase tracking-widest">
                                                                 {progress.step} {progress.total > 0 && `(${progress.current}/${progress.total})`}
                                                             </p>
                                                         </div>
-                                                        <div className="relative">
-                                                            <div className="absolute inset-0 bg-[#00ffcc]/20 blur-xl rounded-full animate-ping" />
-                                                            <div className="w-10 h-10 rounded-full border-2 border-[#00ffcc]/20 border-t-[#00ffcc] animate-spin relative z-10" />
-                                                        </div>
+                                                        <div className="w-10 h-10 rounded-full border-2 border-white/10 border-t-white animate-spin" />
                                                     </div>
                                                 ) : (
                                                     <button
                                                         onClick={() => handleSynthesize(source)}
                                                         disabled={!!processingId}
-                                                        className="px-6 py-3 rounded-xl bg-white/5 hover:bg-[#00ffcc] text-white/60 hover:text-black font-black text-[10px] uppercase tracking-[0.2em] border border-white/5 hover:border-transparent transition-all flex items-center gap-2 group/btn"
+                                                        className="px-6 py-3 rounded-xl bg-white/5 hover:bg-white text-white/60 hover:text-black font-black text-[10px] uppercase tracking-[0.2em] border border-white/5 hover:border-transparent transition-all flex items-center gap-2"
                                                     >
-                                                        <Zap className="w-3 h-3 group-hover/btn:fill-current" />
+                                                        <Zap className="w-3 h-3" />
                                                         Synthesize
                                                     </button>
                                                 )}
@@ -240,7 +244,7 @@ export default function ProcessorPage() {
                                         {processingId === source.id && (
                                             <div className="mt-6 w-full h-1 bg-white/5 rounded-full overflow-hidden">
                                                 <motion.div
-                                                    className="h-full bg-[#00ffcc]"
+                                                    className="h-full bg-indigo-500"
                                                     initial={{ width: 0 }}
                                                     animate={{
                                                         width: progress.total > 0
@@ -255,9 +259,9 @@ export default function ProcessorPage() {
                             </AnimatePresence>
 
                             {!isLoading && unprocessedSources.length === 0 && (
-                                <div className="p-20 text-center glass-card rounded-[3rem] opacity-30">
-                                    <h3 className="text-sm font-bold uppercase tracking-widest">Queue Clear</h3>
-                                    <p className="text-[10px] mt-2 italic font-medium">All intelligence captured has been neural bonded.</p>
+                                <div className="p-20 text-center bg-white/5 border border-white/5 rounded-[3rem] opacity-30">
+                                    <h3 className="text-sm font-black uppercase tracking-widest text-white/50">Queue Clear</h3>
+                                    <p className="text-[10px] mt-2 font-black uppercase tracking-widest text-white/20">All intelligence has been neural bonded.</p>
                                 </div>
                             )}
                         </div>
@@ -266,13 +270,13 @@ export default function ProcessorPage() {
 
                 {/* ── Right: Mission Log ── */}
                 <div className="lg:col-span-4 space-y-6">
-                    <section className="glass-card rounded-[2.5rem] flex flex-col h-[600px] overflow-hidden border border-white/5">
+                    <section className="bg-white/5 rounded-[2.5rem] flex flex-col h-[600px] overflow-hidden border border-white/5">
                         <div className="px-6 py-4 border-b border-white/5 flex items-center justify-between">
                             <h2 className="text-[10px] font-black text-white/30 uppercase tracking-[0.3em] flex items-center gap-2">
                                 <Cpu className="w-3 h-3" />
                                 Neural Log
                             </h2>
-                            <span className="text-[8px] font-black text-[#00ffcc]/50 uppercase tracking-[0.3em]">Live Stream</span>
+                            <span className="text-[8px] font-black text-indigo-400/50 uppercase tracking-[0.4em]">Live Stream</span>
                         </div>
                         <div className="flex-1 overflow-y-auto p-6 font-mono text-[10px] space-y-2 no-scrollbar">
                             <AnimatePresence initial={false}>
@@ -281,19 +285,19 @@ export default function ProcessorPage() {
                                         key={logs.length - i}
                                         initial={{ opacity: 0, x: 20 }}
                                         animate={{ opacity: 1, x: 0 }}
-                                        className={`${log.includes('[Error]') ? 'text-rose-400' :
-                                            log.includes('[Success]') ? 'text-[#00ffcc]' :
-                                                log.includes('[AI]') ? 'text-violet-400' :
-                                                    'text-white/40'
+                                        className={`${log.msg.includes('[Error]') ? 'text-red-400' :
+                                            log.msg.includes('[Success]') ? 'text-indigo-400' :
+                                                log.msg.includes('[AI]') ? 'text-white/60' :
+                                                    'text-white/30'
                                             }`}
                                     >
-                                        <span className="opacity-30 mr-2">[{new Date().toLocaleTimeString([], { hour12: false })}]</span>
-                                        {log}
+                                        <span className="opacity-10 mr-2">[{log.time}]</span>
+                                        {log.msg}
                                     </motion.div>
                                 ))}
                             </AnimatePresence>
                             {logs.length === 0 && (
-                                <div className="h-full flex items-center justify-center opacity-10 italic">
+                                <div className="h-full flex items-center justify-center opacity-10 font-black uppercase tracking-widest">
                                     Telemetry Idle
                                 </div>
                             )}

@@ -41,7 +41,7 @@ export default function SyncStatusIndicator() {
         if (!isOnline) return 'bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.5)]';
         if (isSyncing) return 'bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.5)]';
         if (isError) return 'bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.5)]';
-        return 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]';
+        return 'bg-indigo-500 shadow-[0_0_10px_rgba(99,102,241,0.5)]';
     };
 
     const getStatusText = () => {
@@ -97,7 +97,7 @@ export default function SyncStatusIndicator() {
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.8 }}
                     >
-                        <Wifi size={10} className="text-emerald-400" />
+                        <Wifi size={10} className="text-indigo-400" />
                     </motion.div>
                 )}
             </AnimatePresence>

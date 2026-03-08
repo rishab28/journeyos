@@ -4,6 +4,7 @@
 // ═══════════════════════════════════════════════════════════
 
 import { createClient } from '@supabase/supabase-js';
+import { dnsProofFetch } from './dnsBypass';
 
 export function createServerSupabaseClient() {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -17,6 +18,9 @@ export function createServerSupabaseClient() {
     }
 
     return createClient(supabaseUrl ?? '', supabaseServiceKey ?? '', {
+        global: {
+            fetch: (url, options) => dnsProofFetch(url as string, options as any)
+        },
         auth: {
             autoRefreshToken: false,
             persistSession: false,

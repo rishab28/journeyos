@@ -164,7 +164,7 @@ export async function askLiveAI(
 
         // 6. Call Neural Gateway with augmented context
         const result = await neuralGateway.generateContent({
-            model: 'gemini-2.5-flash',
+            model: 'gemini-2.0-flash',
             systemPrompt: PROMPTS.AskAI.SYSTEM,
             userPrompt: userPrompt,
             temperature: 0.4,

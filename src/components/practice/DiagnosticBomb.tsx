@@ -68,7 +68,7 @@ export default function DiagnosticBomb() {
                     particleCount: 150,
                     spread: 80,
                     origin: { y: 0.6 },
-                    colors: ['#7c3aed', '#10b981', '#ffffff']
+                    colors: ['#6366f1', '#818cf8', '#ffffff']
                 });
             }
         }
@@ -104,7 +104,7 @@ export default function DiagnosticBomb() {
                 >
                     <div className="text-5xl mb-6">{passed ? '🚀' : '🧱'}</div>
                     <h2 className="text-2xl font-black text-white mb-2 uppercase tracking-wider">{passed ? 'Foundation Bypassed' : 'Foundation Required'}</h2>
-                    <div className="text-4xl font-black tabular-nums text-emerald-400 mb-4">{score} <span className="text-lg text-white/30">/ 5</span></div>
+                    <div className="text-4xl font-black tabular-nums text-indigo-400 mb-4">{score} <span className="text-lg text-white/30">/ 5</span></div>
 
                     <p className="text-white/60 text-sm leading-relaxed mb-8">
                         {passed
@@ -114,7 +114,7 @@ export default function DiagnosticBomb() {
 
                     <button
                         onClick={handleComplete}
-                        className={`w-full py-4 rounded-xl text-sm font-bold uppercase tracking-widest transition-colors ${passed ? 'bg-emerald-500 hover:bg-emerald-600 text-black' : 'bg-white/10 hover:bg-white/20 text-white'}`}
+                        className={`w-full py-4 rounded-xl text-sm font-bold uppercase tracking-widest transition-colors ${passed ? 'bg-indigo-500 hover:bg-indigo-600 text-white' : 'bg-white/10 hover:bg-white/20 text-white'}`}
                     >
                         Enter The Feed
                     </button>

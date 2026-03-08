@@ -55,12 +55,6 @@ export const syncEngine = {
         try {
             // Law #3: Offline-First zero-internet fallback
             if (typeof navigator !== 'undefined' && !navigator.onLine) {
-                const cardCount = await db.cards.count();
-                if (cardCount === 0) {
-                    console.log('[SyncEngine] First open is completely offline. Injecting Demo Content.');
-                    await this.loadDemoContent();
-                    return { success: true, pulledCards: 3, isDemo: true };
-                }
                 return { success: false, error: 'Offline' };
             }
 
@@ -70,72 +64,75 @@ export const syncEngine = {
             const lastCard = await db.cards.orderBy('updatedAt').last();
             const lastSyncTime = lastCard?.updatedAt || new Date(0).toISOString();
 
-            // 1. Pull New/Updated Cards
-            const { data: remoteCards, error: cardError } = await supabase
-                .from('cards')
-                .select('*')
-                .gt('updated_at', lastSyncTime)
-                .eq('status', CardStatus.LIVE);
+            // 1. Fetch ALL data via Server Action to bypass browser DNS SNI block
+            const { pullSyncData } = await import('@/app/actions/intel/pullSyncData');
+            const syncDataResult = await pullSyncData(lastSyncTime, user?.id);
 
-            if (cardError) throw cardError;
-
-            if (remoteCards && remoteCards.length > 0) {
-                console.log(`[SyncEngine] Pulling ${remoteCards.length} new/updated cards...`);
-
-                const mappedCards = remoteCards.map(dbCard => ({
-                    id: dbCard.id,
-                    type: dbCard.type,
-                    domain: dbCard.domain,
-                    subject: dbCard.subject,
-                    topic: dbCard.topic,
-                    subTopic: dbCard.sub_topic,
-                    difficulty: dbCard.difficulty,
-                    examTags: dbCard.exam_tags || [],
-                    status: dbCard.status,
-                    front: dbCard.front,
-                    back: dbCard.back,
-                    explanation: dbCard.explanation,
-                    topperTrick: dbCard.topper_trick,
-                    eliminationTrick: dbCard.elimination_trick,
-                    mainsPoint: dbCard.mains_point,
-                    syllabusTopic: dbCard.syllabus_topic,
-                    crossRefs: dbCard.cross_refs,
-                    logicDerivation: dbCard.logic_derivation,
-                    interlinkIds: dbCard.interlink_ids,
-                    isPyqTagged: dbCard.is_pyq_tagged,
-                    pyqYears: dbCard.pyq_years,
-                    currentAffairs: dbCard.current_affairs,
-                    priorityScore: dbCard.priority_score,
-                    options: dbCard.options,
-                    year: dbCard.year,
-                    examName: dbCard.exam_name,
-                    sourcePdf: dbCard.source_pdf,
-                    scaffoldLevel: dbCard.scaffold_level,
-                    customAnalogy: dbCard.custom_analogy,
-                    srs: {
-                        easeFactor: dbCard.ease_factor || 2.5,
-                        interval: dbCard.interval || 0,
-                        repetitions: dbCard.repetitions || 0,
-                        nextReviewDate: dbCard.next_review_date,
-                        lastReviewDate: dbCard.last_review_date,
-                    },
-                    createdAt: dbCard.created_at,
-                    updatedAt: dbCard.updated_at,
-                }));
-
-                await db.cards.bulkPut(mappedCards);
+            if (!syncDataResult.success) {
+                throw new Error(syncDataResult.error || 'Failed to pull sync data');
             }
 
-            // 2. Pull New Stories
-            const { data: remoteStories, error: storyError } = await supabase
-                .from('stories')
-                .select('*')
-                .gt('created_at', lastSyncTime);
+            const { cards: remoteCards, legacyStories: legacyStoriesRes, dailyStories: dailyStoriesRes, progress, squadMembers } = syncDataResult;
 
-            if (storyError) throw storyError;
+            if (remoteCards && remoteCards.length > 0) {
+                // Filter for LIVE cards only as we previously did in the query
+                const liveCards = remoteCards.filter((c: any) => c.status === CardStatus.LIVE);
 
-            if (remoteStories && remoteStories.length > 0) {
-                const mappedStories = remoteStories.map(s => ({
+                if (liveCards.length > 0) {
+                    console.log(`[SyncEngine] Pulling ${liveCards.length} new/updated cards...`);
+
+                    const mappedCards = liveCards.map((dbCard: any) => ({
+                        id: dbCard.id,
+                        type: dbCard.type,
+                        domain: dbCard.domain,
+                        subject: dbCard.subject,
+                        topic: dbCard.topic,
+                        subTopic: dbCard.sub_topic,
+                        difficulty: dbCard.difficulty,
+                        examTags: dbCard.exam_tags || [],
+                        status: dbCard.status,
+                        front: dbCard.front,
+                        back: dbCard.back,
+                        explanation: dbCard.explanation,
+                        topperTrick: dbCard.topper_trick,
+                        eliminationTrick: dbCard.elimination_trick,
+                        mainsPoint: dbCard.mains_point,
+                        syllabusTopic: dbCard.syllabus_topic,
+                        crossRefs: dbCard.cross_refs,
+                        logicDerivation: dbCard.logic_derivation,
+                        interlinkIds: dbCard.interlink_ids,
+                        isPyqTagged: dbCard.is_pyq_tagged,
+                        pyqYears: dbCard.pyq_years,
+                        currentAffairs: dbCard.current_affairs,
+                        priorityScore: dbCard.priority_score,
+                        options: typeof dbCard.options === 'string' ? JSON.parse(dbCard.options) : dbCard.options,
+                        year: dbCard.year,
+                        examName: dbCard.exam_name,
+                        sourcePdf: dbCard.source_pdf,
+                        scaffoldLevel: dbCard.scaffold_level,
+                        customAnalogy: dbCard.custom_analogy,
+                        srs: {
+                            easeFactor: dbCard.ease_factor || 2.5,
+                            interval: dbCard.interval || 0,
+                            repetitions: dbCard.repetitions || 0,
+                            nextReviewDate: dbCard.next_review_date,
+                            lastReviewDate: dbCard.last_review_date,
+                        },
+                        createdAt: dbCard.created_at,
+                        updatedAt: dbCard.updated_at,
+                    }));
+
+                    await db.cards.bulkPut(mappedCards);
+                }
+            }
+
+            const remoteStories = legacyStoriesRes || [];
+            const dailyStories = dailyStoriesRes || [];
+
+            if (remoteStories.length > 0 || dailyStories.length > 0) {
+                console.log(`[SyncEngine] Pulling ${remoteStories.length} legacy and ${dailyStories.length} daily stories...`);
+
+                const mappedLegacy = remoteStories.map((s: any) => ({
                     id: s.id,
                     subject: s.subject as Subject,
                     title: s.title,
@@ -146,31 +143,28 @@ export const syncEngine = {
                     expiresAt: s.expires_at,
                     createdAt: s.created_at,
                 }));
-                await db.stories.bulkPut(mappedStories);
+
+                const mappedDaily = dailyStories.map((s: any) => ({
+                    id: s.id,
+                    subject: s.subject as Subject,
+                    title: s.title,
+                    content: [s.title],
+                    summary: s.summary,
+                    syllabusTopic: s.syllabus_topic,
+                    mainsFodder: s.mains_fodder,
+                    cardId: s.card_id,
+                    expiresAt: s.expires_at,
+                    createdAt: s.created_at,
+                }));
+
+                await db.stories.bulkPut([...mappedLegacy, ...mappedDaily]);
             }
 
             // 3. Pull Progress/Profile (If logged in)
             if (user) {
-                const { data: profile } = await supabase
-                    .from('profiles')
-                    .select('*')
-                    .eq('user_id', user.id)
-                    .single();
-                if (profile) await db.profiles.put(profile);
-
-                const { data: progress } = await supabase
-                    .from('user_progress')
-                    .select('*')
-                    .eq('user_id', user.id)
-                    .single();
                 if (progress) await db.userProgress.put(progress);
 
-                // 4. Pull Squads & Shared Intel
-                const { data: squadMembers } = await supabase
-                    .from('squad_members')
-                    .select('*, squads(*)')
-                    .eq('user_id', user.id);
-
+                // 4. Pull Squads
                 if (squadMembers) {
                     await db.squads.bulkPut(squadMembers.map((m: any) => m.squads));
                     await db.squad_members.bulkPut(squadMembers.map((m: any) => ({
@@ -181,13 +175,16 @@ export const syncEngine = {
                     })));
 
                     const squadIds = squadMembers.map((m: any) => m.squad_id);
-                    const { data: intel } = await supabase
-                        .from('shared_intel')
-                        .select('*')
-                        .in('squad_id', squadIds)
-                        .gt('created_at', lastSyncTime);
 
-                    if (intel) await db.shared_intel.bulkPut(intel);
+                    // Call Server Action to bypass browser DNS SNI block
+                    const { pullSharedIntel } = await import('@/app/actions/intel/pullSharedIntel');
+                    const intelResult = await pullSharedIntel(squadIds, String(lastSyncTime));
+
+                    if (intelResult.success && intelResult.data && intelResult.data.length > 0) {
+                        await db.shared_intel.bulkPut(intelResult.data);
+                    } else if (!intelResult.success) {
+                        console.error('[SyncEngine] Shared Intel pull failed:', intelResult.error);
+                    }
                 }
             }
 
@@ -196,15 +193,6 @@ export const syncEngine = {
             return { success: true, pulledCards: remoteCards?.length || 0 };
         } catch (error) {
             console.error('[SyncEngine] Pull failed:', error);
-
-            // Fallback for network errors on first load
-            const cardCount = await db.cards.count();
-            if (cardCount === 0) {
-                console.log('[SyncEngine] Pull failed and DB is empty. Injecting Demo Content as fallback.');
-                await this.loadDemoContent();
-                return { success: true, pulledCards: 3, isDemo: true };
-            }
-
             return { success: false, error };
         }
     },

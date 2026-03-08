@@ -25,6 +25,16 @@ export enum Domain {
   OPTIONAL = 'OPTIONAL',       // Optional subjects
 }
 
+/** Source file type classification — drives processing strategy */
+export enum SourceType {
+  TEXTBOOK = 'TEXTBOOK',             // Standard textbook / reference material
+  PYQ_PAPER = 'PYQ_PAPER',          // Previous Year Question paper
+  NOTIFICATION = 'NOTIFICATION',     // UPSC notifications, circulars, dates
+  NEWS = 'NEWS',                     // News articles / current affairs
+  NOTES = 'NOTES',                   // Personal or coaching notes
+  CURRENT_AFFAIRS = 'CURRENT_AFFAIRS', // Monthly compilations, Yojana, etc.
+}
+
 /** Subject categories (extensible for any exam) */
 export enum Subject {
   POLITY = 'Polity',
@@ -41,6 +51,8 @@ export enum Subject {
   HINDI = 'Hindi',
   PYQS = 'PYQs',
   NOTIFICATIONS = 'UPSC Notifications',
+  SOCIAL_ISSUES = 'Social Issues',
+  INTERNATIONAL_RELATIONS = 'International Relations',
 }
 
 /** Card lifecycle status */
@@ -114,6 +126,16 @@ export interface StudyCard {
   // Phase 16: Personalization
   scaffoldLevel?: 'Foundation' | 'Intermediate' | 'Advanced';
   customAnalogy?: string;    // Highly personalized layman analogy
+
+  // Phase 41: Competitive Surge
+  topicMap?: string;         // Mermaid.js mindmap code
+  translations?: {
+    [key: string]: {
+      front: string;
+      back: string;
+      explanation?: string;
+    }
+  };
 
   // Phase 20-21: Oracle Sniper Engine 2.0
   trendEvolution?: string;   // How the topic shifted over 15 years
@@ -228,6 +250,8 @@ export interface DBCard {
   grey_area_complexity: number;
   trigger_dna: string | null;
   evolution_path: string | null;
+  topic_map: string | null;
+  translations: any; // jsonb translations object
   ease_factor: number;
   interval: number;
   repetitions: number;
@@ -290,6 +314,8 @@ export interface ExtractedCard {
   trendEvolution?: string;
   oracleConfidence?: number;
   formatPrediction?: string;
+  topicMap?: string;
+  translations?: any;
 }
 
 /** 24-Hour Ephemeral Story for Current Affairs */
@@ -298,11 +324,21 @@ export interface CurrentAffairStory {
   subject: Subject;
   title?: string; // New: Direct title support
   content: string[]; // Array of strings or JSON slides
+  summary?: string[]; // New: Bullet points for consolidated view
   syllabusTopic?: string; // New: Surgical syllabus tag
   mainsFodder?: string;  // New: High-value snippet
+  sourceUrl?: string;    // Original article URL (The Hindu, IE, TOI etc.)
+  sourceName?: string;   // Publisher name (e.g. "The Hindu")
   mcqId?: string;    // Links to the validating card ID
   expiresAt: string;
   createdAt: string;
+
+  // Competitive Surge Phase 41
+  sourceInfo?: {
+    name: string;
+    logo_url?: string;
+  };
+  editorialStyle?: boolean;
 
   // Client-populated relation if fetched together
   mcqCard?: StudyCard;

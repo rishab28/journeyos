@@ -94,7 +94,7 @@ export default function GlobalSearch() {
                                         <h3 className="text-sm font-bold text-white/90 uppercase tracking-widest">
                                             Rank-1 Synthesis
                                         </h3>
-                                        <p className="text-[10px] text-emerald-400">Powered by Global Knowledge Retrieval</p>
+                                        <p className="text-[10px] text-indigo-400">Powered by Global Knowledge Retrieval</p>
                                     </div>
                                 </div>
 
@@ -111,11 +111,11 @@ export default function GlobalSearch() {
                                         <div className="flex flex-wrap gap-2">
                                             {result.sources.map((source, idx) => (
                                                 <div key={source.id || idx} className="bg-[#1a1d24] border border-white/10 rounded-lg px-3 py-2 flex items-center gap-2 hover:bg-white/10 transition-colors cursor-pointer group">
-                                                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+                                                    <div className="w-1.5 h-1.5 rounded-full bg-indigo-400 shadow-[0_0_8px_rgba(99,102,241,0.8)]" />
                                                     <span className="text-[10px] text-white/80 font-semibold truncate max-w-[150px]">
                                                         {source.subject} - {source.topic}
                                                     </span>
-                                                    <span className="text-[9px] text-emerald-300/80 bg-emerald-500/10 px-1.5 py-0.5 rounded ml-1">
+                                                    <span className="text-[9px] text-indigo-300/80 bg-indigo-500/10 px-1.5 py-0.5 rounded ml-1">
                                                         {Math.round((source.similarity || 0) * 100)}% Match
                                                     </span>
                                                 </div>

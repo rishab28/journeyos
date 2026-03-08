@@ -59,7 +59,7 @@ export default function MemoryHeatmap() {
     const zoneConfig = {
         danger: { bg: 'bg-rose-500/10', border: 'border-rose-500/20', dot: 'bg-rose-500', label: '🔴 Review Now' },
         learning: { bg: 'bg-amber-500/10', border: 'border-amber-500/20', dot: 'bg-amber-500', label: '🟡 Learning' },
-        mastered: { bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', dot: 'bg-emerald-500', label: '🟢 Mastered' },
+        mastered: { bg: 'bg-indigo-500/10', border: 'border-indigo-500/20', dot: 'bg-indigo-500', label: '🟢 Mastered' },
     };
 
     const dangerCount = zones.filter(z => z.zone === 'danger').length;
@@ -77,7 +77,7 @@ export default function MemoryHeatmap() {
                     <span className="text-amber-400/60">🟡 {learningCount} learning</span>
                 )}
                 {masteredCount > 0 && (
-                    <span className="text-emerald-400/60">🟢 {masteredCount} mastered</span>
+                    <span className="text-indigo-400/60">🟢 {masteredCount} mastered</span>
                 )}
             </div>
 
@@ -90,14 +90,14 @@ export default function MemoryHeatmap() {
                     return (
                         <motion.div
                             key={zone.topic}
-                            className={`p-3 rounded-xl border relative overflow-hidden ${config.bg} ${isHighLethality ? 'border-[#00ffcc]/40 shadow-[0_0_15px_#00ffcc20]' : config.border}`}
+                            className={`p-3 rounded-xl border relative overflow-hidden ${config.bg} ${isHighLethality ? 'border-indigo-500/40 shadow-[0_0_15px_rgba(99,102,241,0.2)]' : config.border}`}
                             initial={{ opacity: 0, scale: 0.9 }}
                             animate={{ opacity: 1, scale: 1 }}
                             transition={{ delay: i * 0.05 }}
                         >
                             {isHighLethality && (
                                 <motion.div
-                                    className="absolute inset-0 bg-gradient-to-tr from-[#00ffcc]/5 to-transparent pointer-events-none"
+                                    className="absolute inset-0 bg-gradient-to-tr from-indigo-500/5 to-transparent pointer-events-none"
                                     animate={{ opacity: [0.3, 0.6, 0.3] }}
                                     transition={{ duration: 3, repeat: Infinity }}
                                 />
@@ -109,13 +109,13 @@ export default function MemoryHeatmap() {
                                     <span className="text-[9px] text-white/25 uppercase tracking-wider">{zone.subject}</span>
                                 </div>
                                 {isHighLethality && (
-                                    <span className="text-[8px] font-black text-[#00ffcc] uppercase tracking-tighter">Neural Focus</span>
+                                    <span className="text-[8px] font-black text-indigo-400 uppercase tracking-tighter">Neural Focus</span>
                                 )}
                             </div>
                             <p className="text-[11px] text-white/60 font-medium truncate relative z-10">{zone.topic}</p>
                             <div className="flex items-center justify-between mt-1.5 relative z-10">
                                 <span className="text-[9px] text-white/20">{zone.cardCount} cards</span>
-                                <span className={`text-[9px] ${isHighLethality ? 'text-[#00ffcc]/60 font-bold' : 'text-white/20'}`}>
+                                <span className={`text-[9px] ${isHighLethality ? 'text-indigo-400/60 font-bold' : 'text-white/20'}`}>
                                     {zone.avgInterval}d avg
                                 </span>
                             </div>

@@ -133,7 +133,7 @@ export default function SyllabusMap() {
                                 </div>
                                 <div className="flex items-center gap-4">
                                     <div className="text-right">
-                                        <div className="text-lg font-black text-emerald-400">{paperPercent}%</div>
+                                        <div className="text-lg font-black text-indigo-400">{paperPercent}%</div>
                                         <div className="text-[9px] uppercase tracking-widest text-white/30 hidden sm:block">Mastered</div>
                                     </div>
                                     <span className="text-white/20 text-xl transition-transform duration-300" style={{ transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>↓</span>
@@ -170,7 +170,7 @@ export default function SyllabusMap() {
                                                                     </div>
                                                                     <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
                                                                         <motion.div
-                                                                            className="h-full bg-emerald-500/80 rounded-full"
+                                                                            className="h-full bg-indigo-500/80 rounded-full"
                                                                             initial={{ width: 0 }}
                                                                             animate={{ width: `${stats.total > 0 ? percent : 0}%` }}
                                                                             transition={{ duration: 1, ease: "easeOut" }}

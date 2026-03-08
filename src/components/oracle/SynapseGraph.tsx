@@ -95,7 +95,7 @@ export default function SynapseGraph({ activeTopic = 'Land Reforms' }: { activeT
                         onClick={() => setSelectedSynapse(i)}
                     >
                         <div className={`w-12 h-12 rounded-full flex items-center justify-center border transition-all duration-300 ${selectedSynapse === i
-                            ? 'bg-emerald-500/20 border-emerald-400 shadow-[0_0_20px_rgba(52,211,153,0.4)]'
+                            ? 'bg-indigo-500/20 border-indigo-400 shadow-[0_0_20px_rgba(99,102,241,0.4)]'
                             : 'bg-white/5 border-white/20 hover:bg-white/10 hover:border-white/40'
                             }`}>
                             <span className="text-xs font-bold text-white/70 group-hover:text-white transition-colors">
@@ -110,10 +110,10 @@ export default function SynapseGraph({ activeTopic = 'Land Reforms' }: { activeT
                                     initial={{ opacity: 0, y: 10, scale: 0.9 }}
                                     animate={{ opacity: 1, y: 0, scale: 1 }}
                                     exit={{ opacity: 0, y: 5, scale: 0.9 }}
-                                    className="absolute top-14 w-48 p-3 bg-black/90 border border-emerald-500/30 rounded-xl shadow-xl z-30"
+                                    className="absolute top-14 w-48 p-3 bg-black/90 border border-indigo-500/30 rounded-xl shadow-xl z-30"
                                 >
-                                    <p className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider mb-1 flex items-center gap-1.5">
-                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                                    <p className="text-[10px] text-indigo-400 font-bold uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
                                         {node.subject} Impact
                                     </p>
                                     <p className="text-xs leading-relaxed text-white/80">

@@ -92,10 +92,10 @@ export default function PeerBenchmark() {
                         </div>
                         <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden relative">
                             {/* Rank 1 Marker */}
-                            <div className="absolute top-0 bottom-0 w-[2px] bg-emerald-500/80 z-20" style={{ left: `${rank1Metrics.depth}%` }} />
+                            <div className="absolute top-0 bottom-0 w-[2px] bg-white/80 z-20" style={{ left: `${rank1Metrics.depth}%` }} />
                             {/* User Progress */}
                             <motion.div
-                                className="h-full bg-gradient-to-r from-cyan-500 to-blue-500 rounded-full"
+                                className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full"
                                 initial={{ width: 0 }}
                                 animate={{ width: `${userMetrics.depth}%` }}
                                 transition={{ duration: 1, ease: 'easeOut' }}
@@ -112,16 +112,16 @@ export default function PeerBenchmark() {
                         </div>
                         <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden relative">
                             {/* Rank 1 Marker */}
-                            <div className="absolute top-0 bottom-0 w-[2px] bg-emerald-500/80 z-20" style={{ left: `${rank1Metrics.speed}%` }} />
+                            <div className="absolute top-0 bottom-0 w-[2px] bg-white/80 z-20" style={{ left: `${rank1Metrics.speed}%` }} />
                             {/* User Progress */}
                             <motion.div
-                                className="h-full bg-gradient-to-r from-emerald-400 to-emerald-600 rounded-full"
+                                className="h-full bg-gradient-to-r from-blue-400 to-indigo-600 rounded-full"
                                 initial={{ width: 0 }}
                                 animate={{ width: `${userMetrics.speed}%` }}
                                 transition={{ duration: 1, delay: 0.2, ease: 'easeOut' }}
                             />
                         </div>
-                        <p className="text-[9px] text-emerald-400/80 mt-1 text-right font-medium">Advantage: +5% (Excellent)</p>
+                        <p className="text-[9px] text-indigo-400/80 mt-1 text-right font-medium">Advantage: +5% (Excellent)</p>
                     </div>
 
                     {/* Consistency */}
@@ -132,7 +132,7 @@ export default function PeerBenchmark() {
                         </div>
                         <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden relative">
                             {/* Rank 1 Marker */}
-                            <div className="absolute top-0 bottom-0 w-[2px] bg-emerald-500/80 z-20" style={{ left: `${rank1Metrics.consistency}%` }} />
+                            <div className="absolute top-0 bottom-0 w-[2px] bg-white/80 z-20" style={{ left: `${rank1Metrics.consistency}%` }} />
                             {/* User Progress */}
                             <motion.div
                                 className="h-full bg-gradient-to-r from-amber-400 to-orange-500 rounded-full"
@@ -146,8 +146,8 @@ export default function PeerBenchmark() {
                 </div>
             </div>
 
-            <div className="mt-5 text-center px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
-                <p className="text-[10px] text-emerald-400 font-medium">
+            <div className="mt-5 text-center px-4 py-2 bg-indigo-500/10 border border-indigo-500/20 rounded-xl">
+                <p className="text-[10px] text-indigo-400 font-medium">
                     "Physical coaching focuses on syllabus. JourneyOS focuses on strategy execution. Your conceptual depth is lagging; focus on First Principles today."
                 </p>
             </div>

@@ -44,12 +44,12 @@ export default function UserManagementPage() {
 
     return (
         <div className="min-h-screen">
-            <header className="mb-10">
+            <header className="mb-12">
                 <div className="flex items-center gap-3 mb-4">
-                    <span className="px-2 py-0.5 rounded-md bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-[9px] font-black uppercase tracking-[0.2em]">Strategic Ops</span>
-                    <h2 className="text-white/40 text-xs font-black uppercase tracking-widest">Student Directory</h2>
+                    <span className="px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-white/40 text-[9px] font-black uppercase tracking-[0.2em]">Authorized Personnel</span>
+                    <h2 className="text-white/20 text-[9px] font-black uppercase tracking-[0.3em]">Student Intel Matrix</h2>
                 </div>
-                <h1 className="text-4xl font-black uppercase tracking-tighter">User Strategic <span className="text-white/20">Control</span></h1>
+                <h1 className="text-4xl font-black uppercase tracking-tighter">Aspirant <span className="text-white/20">Control</span></h1>
             </header>
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -59,10 +59,10 @@ export default function UserManagementPage() {
                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20" size={16} />
                         <input
                             type="text"
-                            placeholder="Search by ID or Name..."
+                            placeholder="Trace Student ID or Alias..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full bg-[#0c0c0c] border border-white/10 rounded-2xl py-4 pl-12 pr-4 text-sm focus:outline-none focus:border-indigo-500/50 transition-colors"
+                            className="w-full bg-[#0c0c0c] border border-white/5 rounded-2xl py-4 pl-12 pr-4 text-[10px] font-black uppercase tracking-widest focus:outline-none focus:border-white/20 transition-all placeholder:text-white/10"
                         />
                     </div>
 

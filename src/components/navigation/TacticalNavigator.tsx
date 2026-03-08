@@ -16,10 +16,10 @@ import { DataPulse } from '@/components/ui/DataPulse';
 type TacticalFilter = 'MASTERED' | 'HIGH_LETHALITY' | 'PYQ_HOTSPOTS' | 'UNSEEN';
 
 const TACTICAL_FILTERS: { id: TacticalFilter, label: string, icon: string, color: string }[] = [
-    { id: 'HIGH_LETHALITY', label: 'High Lethality', icon: '🔥', color: '#ff4d4d' },
-    { id: 'PYQ_HOTSPOTS', label: 'PYQ Hotspots', icon: '🎯', color: '#ffcc00' },
-    { id: 'UNSEEN', label: 'Unseen Terr.', icon: '🔭', color: '#00ffcc' },
-    { id: 'MASTERED', label: 'Fully Secured', icon: '🛡️', color: '#00cc66' },
+    { id: 'HIGH_LETHALITY', label: 'High Lethality', icon: '🔥', color: '#6366f1' },
+    { id: 'PYQ_HOTSPOTS', label: 'PYQ Hotspots', icon: '🎯', color: '#818cf8' },
+    { id: 'UNSEEN', label: 'Unseen Terr.', icon: '🔭', color: '#cbd5e1' },
+    { id: 'MASTERED', label: 'Fully Secured', icon: '🛡️', color: '#ffffff' },
 ];
 
 // UPSC Syllabus Definition
@@ -75,15 +75,17 @@ export default function TacticalNavigator({ onTopicSelect }: TacticalNavigatorPr
         [selectedPaperId]
     );
 
-    // Calculate Intelligence based on filters
+    // Calculate Intelligence based on real card data
     const filteredIntelligence = useMemo(() => {
-        // In a real app, this would filter 'topics' or 'cards' based on the TacticalFilter
-        // For the MVP Aerial View, we simply return the volume of intelligence
+        const total = cards.length;
+        const mastered = cards.filter(c => (c.srs?.interval || 0) > 10).length;
+        const lethal = cards.filter(c => (c.priorityScore || 0) > 7).length;
+        const pyqs = cards.filter(c => c.type === 'PYQ').length;
         return {
-            totalTopics: 124,
-            masteredTopics: 42,
-            lethalTopics: 12,
-            pyqDensity: 88,
+            totalTopics: total,
+            masteredTopics: mastered,
+            lethalTopics: lethal,
+            pyqDensity: pyqs,
         };
     }, [cards, activeFilter]);
 
@@ -105,7 +107,7 @@ export default function TacticalNavigator({ onTopicSelect }: TacticalNavigatorPr
                         {activeFilter === f.id && (
                             <motion.div
                                 layoutId="activeTag"
-                                className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"
+                                className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse"
                             />
                         )}
                     </button>
@@ -129,7 +131,7 @@ export default function TacticalNavigator({ onTopicSelect }: TacticalNavigatorPr
                                     <p className="text-[10px] text-white/30 uppercase mt-1 tracking-widest font-bold">Syllabus Topography 1.1</p>
                                 </div>
                                 <div className="text-right">
-                                    <span className="text-[10px] font-black text-[#00ffcc] uppercase tracking-widest leading-none">Intelligence Secure</span>
+                                    <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest leading-none">Intelligence Secure</span>
                                     <div className="text-xl font-black text-white">42%</div>
                                 </div>
                             </div>
@@ -155,19 +157,19 @@ export default function TacticalNavigator({ onTopicSelect }: TacticalNavigatorPr
                                             <div>
                                                 <div className="flex gap-1 mb-2">
                                                     {[...Array(5)].map((_, i) => (
-                                                        <div key={i} className={`w-4 h-1 rounded-full ${i < idx + 2 ? 'bg-[#00ffcc]' : 'bg-white/10'}`} />
+                                                        <div key={i} className={`w-4 h-1 rounded-full ${i < idx + 2 ? 'bg-indigo-500' : 'bg-white/10'}`} />
                                                     ))}
                                                 </div>
                                                 <span className="text-[9px] font-bold text-white/40 uppercase tracking-widest">Mastery Status</span>
                                             </div>
                                             <div className="text-right">
                                                 <span className="text-[10px] font-black text-white/20 uppercase tracking-tighter block mb-1">Yield</span>
-                                                <NeonBadge variant={idx === 0 ? 'emerald' : 'amber'}>{idx === 0 ? 'High' : 'Medium'}</NeonBadge>
+                                                <div className="px-2 py-0.5 rounded bg-white/5 border border-white/10 text-[8px] font-black uppercase text-indigo-400">{idx === 0 ? 'High' : 'Medium'}</div>
                                             </div>
                                         </div>
 
                                         {/* Tactical Overlay */}
-                                        <div className="absolute inset-0 bg-gradient-to-br from-[#00ffcc]/[0.02] to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                                        <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/[0.02] to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                                         <div className="absolute inset-0 bg-black/40 backdrop-blur-3xl -z-10" />
                                     </motion.button>
                                 ))}
@@ -190,7 +192,7 @@ export default function TacticalNavigator({ onTopicSelect }: TacticalNavigatorPr
                                     ←
                                 </button>
                                 <div>
-                                    <h2 className="text-sm font-black text-[#00ffcc] uppercase tracking-[0.3em]">{selectedPaper.paper}</h2>
+                                    <h2 className="text-sm font-black text-indigo-400 uppercase tracking-[0.3em]">{selectedPaper.paper}</h2>
                                     <p className="text-[10px] text-white/30 uppercase mt-0.5 tracking-widest font-bold">Tactical Heatmap</p>
                                 </div>
                             </div>
@@ -198,7 +200,7 @@ export default function TacticalNavigator({ onTopicSelect }: TacticalNavigatorPr
                             {/* Micro-Topic Intelligence Grid */}
                             {selectedPaper.subjects.map(subject => (
                                 <div key={subject.name} className="space-y-4">
-                                    <div className="flex justify-between items-center border-l-2 border-[#00ffcc]/30 pl-3">
+                                    <div className="flex justify-between items-center border-l-2 border-indigo-500/30 pl-3">
                                         <h3 className="text-xs font-black text-white/80 uppercase tracking-widest">{subject.name}</h3>
                                         <span className="text-[9px] font-bold text-white/20 uppercase">Intelligence Density</span>
                                     </div>
@@ -213,7 +215,7 @@ export default function TacticalNavigator({ onTopicSelect }: TacticalNavigatorPr
                                                     onClick={() => handleTopicClick(subject.name, topicName)}
                                                     className="aspect-square rounded-lg relative group cursor-pointer active:scale-95 transition-all"
                                                     style={{
-                                                        backgroundColor: mastery > 0.8 ? '#00cc66' : mastery > 0.5 ? '#00cc6644' : mastery > 0.3 ? '#ffcc0044' : '#ffffff05',
+                                                        backgroundColor: mastery > 0.8 ? '#6366f1' : mastery > 0.5 ? '#6366f144' : mastery > 0.3 ? '#818cf822' : '#ffffff05',
                                                         border: `1px solid ${mastery > 0.3 ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.02)'}`
                                                     }}
                                                 >
@@ -237,24 +239,24 @@ export default function TacticalNavigator({ onTopicSelect }: TacticalNavigatorPr
                     <div className="flex justify-between items-start relative z-10">
                         <div>
                             <div className="flex items-center gap-2 mb-1">
-                                <DataPulse color="emerald" size="sm" />
+                                <DataPulse color="indigo" size="sm" />
                                 <h4 className="text-[10px] font-black text-white uppercase tracking-widest ml-1">Global Sync Status</h4>
                             </div>
                             <p className="text-white/30 text-[9px] font-bold uppercase tracking-widest pl-4">Scanning Weak Synapses...</p>
                         </div>
-                        <div className="w-12 h-12 rounded-full border border-[#00ffcc]/20 flex items-center justify-center">
+                        <div className="w-12 h-12 rounded-full border border-indigo-500/20 flex items-center justify-center">
                             <span className="text-xl">📡</span>
                         </div>
                     </div>
 
                     <div className="flex gap-4 relative z-10">
                         <div className="flex-1 bg-white/[0.03] border border-white/5 rounded-2xl p-4">
-                            <span className="text-[8px] font-black text-white/20 uppercase tracking-widest block mb-1">Lethal Zones</span>
-                            <span className="text-lg font-black text-[#ff4d4d]">12 <span className="text-[10px] font-bold opacity-30">Topics</span></span>
+                            <span className="text-[8px] font-black text-white/20 uppercase tracking-widest block mb-1">High Priority</span>
+                            <span className="text-lg font-black text-indigo-400">{filteredIntelligence.lethalTopics} <span className="text-[10px] font-bold opacity-30">Cards</span></span>
                         </div>
                         <div className="flex-1 bg-white/[0.03] border border-white/5 rounded-2xl p-4">
-                            <span className="text-[8px] font-black text-white/20 uppercase tracking-widest block mb-1">PYQ Hotspots</span>
-                            <span className="text-lg font-black text-[#ffcc00]">88 <span className="text-[10px] font-bold opacity-30">Points</span></span>
+                            <span className="text-[8px] font-black text-white/20 uppercase tracking-widest block mb-1">PYQ Cards</span>
+                            <span className="text-lg font-black text-white/60">{filteredIntelligence.pyqDensity} <span className="text-[10px] font-bold opacity-30">Cards</span></span>
                         </div>
                     </div>
 

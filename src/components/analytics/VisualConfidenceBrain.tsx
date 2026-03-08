@@ -91,8 +91,8 @@ export default function VisualConfidenceBrain() {
 
                 if (hasStarted) {
                     if (mastery >= 80) {
-                        nodeColor = 'bg-emerald-400 shadow-[0_0_20px_rgba(52,211,153,0.6)]';
-                        pulseColor = 'rgba(52,211,153,0.4)';
+                        nodeColor = 'bg-white shadow-[0_0_20px_rgba(255,255,255,0.8)]';
+                        pulseColor = 'rgba(255,255,255,0.4)';
                         sizeClass = 'w-10 h-10';
                     } else if (mastery >= 50) {
                         nodeColor = 'bg-indigo-400 shadow-[0_0_15px_rgba(129,140,248,0.5)]';

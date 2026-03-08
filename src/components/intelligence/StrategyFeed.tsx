@@ -55,7 +55,7 @@ export default function StrategyFeed() {
     const styles = {
         urgent: 'border-rose-500/50 bg-rose-500/10 text-rose-400',
         warning: 'border-amber-500/50 bg-amber-500/10 text-amber-400',
-        success: 'border-emerald-500/50 bg-emerald-500/10 text-emerald-400',
+        success: 'border-indigo-500/50 bg-indigo-500/10 text-indigo-400',
         info: 'border-indigo-500/50 bg-indigo-500/10 text-indigo-400',
     };
 

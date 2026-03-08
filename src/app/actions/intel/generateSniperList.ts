@@ -54,7 +54,7 @@ export async function generateFinal2026SniperList() {
 
         const genAI = getGeminiClient();
         const model = genAI.getGenerativeModel({
-            model: 'gemini-1.5-flash',
+            model: 'gemini-2.0-flash',
             generationConfig: {
                 temperature: 0.3, // Steady temperature for authoritative final output
                 responseMimeType: 'application/json',

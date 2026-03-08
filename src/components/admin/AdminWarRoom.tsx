@@ -16,7 +16,7 @@ export default function AdminWarRoom() {
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
                 {[
                     { label: 'Total Aspirants', val: '12,480', sub: '+12% this week', color: '#a855f7' },
-                    { label: 'Avg System IQ', val: '64.2', sub: 'Up from 58.0', color: '#00ffcc' },
+                    { label: 'Avg System IQ', val: '64.2', sub: 'Up from 58.0', color: '#818cf8' },
                     { label: 'Content Saturation', val: '82%', sub: '42k Cards Active', color: '#3b82f6' },
                     { label: 'Oracle Precision', val: '94%', sub: '2024 Calibrated', color: '#f59e0b' },
                 ].map((stat, i) => (
@@ -40,7 +40,7 @@ export default function AdminWarRoom() {
                         <p className="text-sm text-white/40 mt-1 font-medium italic">Global content density and mastery mapping</p>
                     </div>
                     <div className="flex items-center gap-6 px-6 py-3 bg-white/5 rounded-2xl border border-white/5 backdrop-blur-xl">
-                        <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-[#00ffcc] shadow-[0_0_10px_#00ffcc]" /> <span className="text-[10px] font-bold uppercase text-white/60 tracking-widest">Saturated</span></div>
+                        <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-indigo-500 shadow-[0_0_10px_rgba(99,102,241,0.5)]" /> <span className="text-[10px] font-bold uppercase text-white/60 tracking-widest">Saturated</span></div>
                         <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-purple-500 shadow-[0_0_10px_rgba(168,85,247,0.5)]" /> <span className="text-[10px] font-bold uppercase text-white/60 tracking-widest">Growth</span></div>
                     </div>
                 </div>
@@ -56,8 +56,8 @@ export default function AdminWarRoom() {
                                 transition={{ delay: i * 0.01 }}
                                 className="aspect-square rounded-2xl border border-white/5 relative group cursor-help transition-all hover:scale-110 hover:z-20"
                                 style={{
-                                    backgroundColor: saturation > 0.8 ? 'rgba(0, 255, 204, 0.15)' : saturation > 0.5 ? 'rgba(168, 85, 247, 0.1)' : 'rgba(255, 255, 255, 0.02)',
-                                    boxShadow: saturation > 0.8 ? 'inset 0 0 20px rgba(0,255,204,0.1)' : 'none'
+                                    backgroundColor: saturation > 0.8 ? 'rgba(99, 102, 241, 0.15)' : saturation > 0.5 ? 'rgba(168, 85, 247, 0.1)' : 'rgba(255, 255, 255, 0.02)',
+                                    boxShadow: saturation > 0.8 ? 'inset 0 0 20px rgba(99,102,241,0.1)' : 'none'
                                 }}
                             >
                                 <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/60 backdrop-blur-md rounded-2xl">
@@ -77,7 +77,7 @@ export default function AdminWarRoom() {
                     <h3 className="text-xs font-bold text-white/30 uppercase tracking-[0.3em] pl-6 italic">Active Operations</h3>
                     <div className="space-y-4">
                         {[
-                            { name: 'Smart Ingestor (Flash)', status: 'OPERATIONAL', load: 42, color: '#00ffcc' },
+                            { name: 'Smart Ingestor (Flash)', status: 'OPERATIONAL', load: 42, color: '#6366f1' },
                             { name: 'Oracle Backtester', status: 'STANDBY', load: 12, color: '#f59e0b' },
                             { name: 'Review QA Buffer', status: 'HEAVY LOAD', load: 88, color: '#f43f5e' },
                         ].map((pipe, i) => (
@@ -117,6 +117,7 @@ export default function AdminWarRoom() {
                     <div className="grid grid-cols-2 gap-4">
                         {[
                             { label: 'Ingest', icon: '📥', href: '/admin/ingest' },
+                            { label: 'Neural', icon: '🧠', href: '/admin/ingestor' },
                             { label: 'Oracle', icon: '💎', href: '/admin/oracle' },
                             { label: 'Review', icon: '✨', href: '/admin/review' },
                             { label: 'Sources', icon: '🏛️', href: '/admin/vault' },

@@ -27,74 +27,73 @@ export default function DailyDashboard() {
     const progressPercent = Math.round(dailyProgress * 100);
     const radius = 14;
     const circumference = 2 * Math.PI * radius;
-    // Bound the progress so it doesn't wrap backwards if dailyProgress > 1
     const boundedProgress = Math.min(dailyProgress, 1);
     const strokeDashoffset = circumference - (boundedProgress * circumference);
 
     return (
         <motion.div
-            className="w-full px-6 pt-8 pb-4 flex items-center justify-between z-50 bg-black"
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+            className="w-full flex items-center justify-between"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5 }}
         >
             {/* ── Minimal Streak Left ── */}
-            <div className="flex items-center gap-3 opacity-90 hover:opacity-100 transition-opacity cursor-default isolate">
-                <div className="flex items-center gap-1.5">
-                    <span className="text-xl shrink-0 -mt-0.5">🔥</span>
-                    <span className="text-2xl font-extrabold tracking-tight text-white">{currentStreak}</span>
+            <div className="flex items-center gap-4 opacity-90">
+                <div className="flex items-center gap-2">
+                    <span className="text-xl shrink-0">🔥</span>
+                    <span className="text-3xl font-black text-white tabular-nums">{currentStreak}</span>
                 </div>
-                {/* Sync Indicator */}
-                <div className="flex items-center gap-1 pl-1">
+                {/* Sync Status Badge */}
+                <div className="px-3 py-1 rounded-full bg-white/[0.03] border border-white/[0.05] flex items-center gap-2">
                     <motion.div
-                        className={`w-1.5 h-1.5 rounded-full ${syncStatus === 'synced' ? 'bg-emerald-500' :
-                                syncStatus === 'syncing' ? 'bg-amber-500' : 'bg-rose-500'
+                        className={`w-1.5 h-1.5 rounded-full ${syncStatus === 'synced' ? 'bg-indigo-500 shadow-[0_0_8px_#6366f1]' :
+                            syncStatus === 'syncing' ? 'bg-white/40' : 'bg-rose-500 shadow-[0_0_8px_#f43f5e]'
                             }`}
-                        animate={{ opacity: [0.4, 1, 0.4] }}
-                        transition={{ duration: syncStatus === 'syncing' ? 1 : 2, repeat: Infinity, ease: 'easeInOut' }}
+                        animate={syncStatus === 'syncing' ? { opacity: [0.4, 1, 0.4] } : {}}
+                        transition={{ duration: 1, repeat: Infinity }}
                     />
+                    <span className="text-[9px] font-caps text-white/30">{syncStatus}</span>
                 </div>
             </div>
 
-            {/* ── Premium Branding Center ── */}
-            <div className="absolute left-1/2 -translate-x-1/2 pointer-events-none">
-                <span className="text-[10px] font-black tracking-[0.4em] text-white/20 uppercase whitespace-nowrap">JourneyOS</span>
-            </div>
-
-            {/* ── Apple Fitness Style Progress Ring Right ── */}
-            <div className="relative w-9 h-9 flex items-center justify-center opacity-90 hover:opacity-100 transition-opacity cursor-default">
+            {/* ── Progress Ring Right ── */}
+            <div className="relative w-12 h-12 flex items-center justify-center group">
                 {/* Background Ring */}
-                <svg className="w-9 h-9 transform -rotate-90">
+                <svg className="w-12 h-12 transform -rotate-90">
                     <circle
-                        cx="18"
-                        cy="18"
+                        cx="24"
+                        cy="24"
                         r={radius}
-                        stroke="rgba(255,255,255,0.08)"
-                        strokeWidth="3"
+                        stroke="rgba(255,255,255,0.04)"
+                        strokeWidth="3.5"
                         fill="transparent"
                     />
                     {/* Foreground Ring */}
                     <motion.circle
-                        cx="18"
-                        cy="18"
+                        cx="24"
+                        cy="24"
                         r={radius}
-                        stroke={todayReviewed >= dailyGoal ? "#10b981" : "#ffffff"} // Emerald when done, White when in progress
-                        strokeWidth="3"
+                        stroke={todayReviewed >= dailyGoal ? "#6366f1" : "rgba(255,255,255,0.2)"}
+                        strokeWidth="3.5"
                         fill="transparent"
                         strokeDasharray={circumference}
                         initial={{ strokeDashoffset: circumference }}
                         animate={{ strokeDashoffset }}
-                        transition={{ duration: 1.5, ease: 'easeOut' }}
+                        transition={{ duration: 1.5, ease: [0.16, 1, 0.3, 1] }}
                         strokeLinecap="round"
                     />
                 </svg>
                 {/* Center Content */}
                 <div className="absolute inset-0 flex items-center justify-center">
                     {todayReviewed >= dailyGoal ? (
-                        <span className="text-[11px] text-emerald-400 font-bold tracking-tighter">✓</span>
+                        <span className="text-sm text-indigo-400 font-black">✓</span>
                     ) : (
-                        <span className="text-[9px] text-white/60 font-medium tracking-tighter">{progressPercent}</span>
+                        <span className="text-[10px] text-white/50 font-bold">{progressPercent}%</span>
                     )}
+                </div>
+                {/* Tooltip on hover */}
+                <div className="absolute -top-10 right-0 px-2 py-1 glass-panel rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
+                    <p className="text-[9px] font-caps text-white/60">{todayReviewed}/{dailyGoal} Reviewed</p>
                 </div>
             </div>
         </motion.div>

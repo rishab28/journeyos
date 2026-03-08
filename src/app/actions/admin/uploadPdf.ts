@@ -5,28 +5,18 @@
 // Handles uploading raw PDF files to Supabase Storage (Bypasses RLS)
 // ═══════════════════════════════════════════════════════════
 
-import { createClient } from '@supabase/supabase-js';
+import { createServerSupabaseClient } from '@/lib/core/supabase/server';
 
 export async function uploadPdfToStorage(formData: FormData): Promise<{ success: boolean; filename?: string; error?: string }> {
     try {
         const file = formData.get('file') as File;
+        if (!file) return { success: false, error: 'No file provided.' };
 
-        if (!file) {
-            return { success: false, error: 'No file provided.' };
-        }
+        // This now uses the global DNS bypass fallback with SNI support!
+        const supabase = await createServerSupabaseClient();
 
-        // Force Service Role Key to bypass RLS for Admin Uploads
-        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-        const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-
-        const supabase = createClient(supabaseUrl, supabaseKey, {
-            auth: { persistSession: false }
-        });
-
-        // Clean filename and append timestamp to prevent collisions
         const cleanName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
         const filename = `${Date.now()}_${cleanName}`;
-
         const arrayBuffer = await file.arrayBuffer();
 
         const { error } = await supabase.storage
@@ -37,11 +27,7 @@ export async function uploadPdfToStorage(formData: FormData): Promise<{ success:
                 upsert: true
             });
 
-        if (error) {
-            console.error('[uploadPdf] Storage error:', error);
-            return { success: false, error: error.message };
-        }
-
+        if (error) throw error;
         return { success: true, filename };
 
     } catch (err: any) {
@@ -52,12 +38,7 @@ export async function uploadPdfToStorage(formData: FormData): Promise<{ success:
 
 export async function getPdfDownloadUrl(filename: string): Promise<{ success: boolean; url?: string; error?: string }> {
     try {
-        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-        const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-
-        const supabase = createClient(supabaseUrl, supabaseKey, {
-            auth: { persistSession: false }
-        });
+        const supabase = await createServerSupabaseClient();
 
         const { data, error } = await supabase.storage
             .from('pdfs')
@@ -68,5 +49,56 @@ export async function getPdfDownloadUrl(filename: string): Promise<{ success: bo
     } catch (err: any) {
         console.error('[getPdfDownloadUrl] Error:', err);
         return { success: false, error: err.message };
+    }
+}
+
+export async function extractPdfTextServer(filename: string): Promise<{ success: boolean; text?: string; pageCount?: number; error?: string }> {
+    try {
+        // Essential Polyfill for pdfjs-dist in Node.js environment
+        if (typeof global.DOMMatrix === 'undefined') {
+            (global as any).DOMMatrix = class DOMMatrix {
+                constructor() { }
+                static fromFloat32Array() { return new DOMMatrix(); }
+                static fromFloat64Array() { return new DOMMatrix(); }
+            };
+        }
+
+        const supabase = await createServerSupabaseClient();
+
+        // 1. Download file from storage
+        const { data, error } = await supabase.storage
+            .from('pdfs')
+            .download(filename);
+
+        if (error) throw error;
+
+        // 2. Parse PDF on the server using pdf-parse v2
+        const buffer = Buffer.from(await data.arrayBuffer());
+
+        // Dynamic import to avoid bundling issues — pdf-parse v2 uses ESM
+        const pdfParseModule = await import('pdf-parse');
+        // Handle both ES module and CJS default exports
+        const PDFParse = pdfParseModule.PDFParse || (pdfParseModule as any).default?.PDFParse;
+
+        if (!PDFParse) {
+            throw new Error('PDFParse class not found in pdf-parse module');
+        }
+
+        const pdfParser = new PDFParse({ data: new Uint8Array(buffer) });
+
+        // pdf-parse v2: getText() handles loading internally, returns TextResult with .text
+        const textResult = await pdfParser.getText();
+
+        // Return a fresh, clean object to avoid any proxy/serialization issues
+        return {
+            success: true,
+            text: textResult.text ? String(textResult.text) : '',
+            pageCount: Number(textResult.total || 0)
+        };
+
+    } catch (err: any) {
+        console.error('[extractPdfTextServer] Fatal Exception:', err);
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        return { success: false, error: errorMessage };
     }
 }

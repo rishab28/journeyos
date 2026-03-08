@@ -7,7 +7,7 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
 export async function extractCardsFromImage(base64Image: string, mimeType: string, subject: string, topic: string) {
     try {
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
         const prompt = `You are a strict UPSC/HAS content digitized engine. Read this handwritten note or newspaper clipping image.
         Extract the core factual concepts and return them strictly as an array of JSON objects matching the ExtractedCard schema.

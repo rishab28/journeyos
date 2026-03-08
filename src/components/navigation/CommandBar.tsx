@@ -48,14 +48,15 @@ export default function CommandBar() {
     return (
         <AnimatePresence>
             {isOpen && (
-                <div className="fixed inset-0 z-[200] flex items-start justify-center pt-[15vh] px-4 backdrop-blur-sm bg-black/40">
+                <div className="fixed inset-0 z-[200] flex items-start justify-center pt-[15vh] px-4 backdrop-blur-md bg-black/60">
                     <motion.div
                         initial={{ opacity: 0, scale: 0.95, y: -20 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.95, y: -20 }}
-                        className="w-full max-w-xl bg-[#0a0a0a] border border-white/10 rounded-2xl shadow-[0_30px_60px_rgba(0,0,0,0.8)] overflow-hidden"
+                        transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                        className="w-full max-w-xl bg-[#050508]/90 border border-white/10 rounded-2xl shadow-[0_30px_60px_rgba(0,0,0,1),0_0_40px_rgba(255,255,255,0.02)] overflow-hidden backdrop-blur-3xl"
                     >
-                        <div className="flex items-center px-5 py-4 border-b border-white/5">
+                        <div className="flex items-center px-5 py-4 border-b border-white/5 bg-white/[0.02]">
                             <svg className="w-4 h-4 text-white/40 mr-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
                             <input
                                 ref={inputRef}
@@ -76,16 +77,18 @@ export default function CommandBar() {
                                     <button
                                         key={idx}
                                         onClick={() => handleSelect(msg)}
-                                        className="w-full flex items-center justify-between px-4 py-3 rounded-xl hover:bg-white/5 transition-colors text-left"
+                                        className="w-full flex items-center justify-between px-4 py-3 rounded-xl hover:bg-white/5 hover:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.1)] transition-all text-left"
                                     >
                                         <div className="flex items-center gap-3">
-                                            <span className={`text-[9px] font-black px-1.5 py-0.5 rounded uppercase ${msg.type === 'Subject' ? 'bg-purple-500/20 text-purple-400' : 'bg-emerald-500/20 text-emerald-400'
+                                            <span className={`text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-widest border ${msg.type === 'Subject'
+                                                ? 'bg-white/5 border-white/10 text-white/70'
+                                                : 'bg-indigo-500/10 border-indigo-500/20 text-indigo-400'
                                                 }`}>
                                                 {msg.type}
                                             </span>
-                                            <span className="text-white/70 font-medium">{msg.label}</span>
+                                            <span className="text-white/80 font-bold text-sm">{msg.label}</span>
                                         </div>
-                                        <span className="text-[10px] text-white/20 font-bold uppercase tracking-widest">Select</span>
+                                        <span className="text-[9px] text-white/20 font-black uppercase tracking-[0.2em] border border-white/5 px-2 py-1 rounded bg-white/5">Select</span>
                                     </button>
                                 ))
                             ) : (

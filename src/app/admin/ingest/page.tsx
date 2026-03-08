@@ -7,12 +7,22 @@
 
 import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Domain, Subject } from '@/types';
+import { Domain, Subject, SourceType } from '@/types';
 import { registerSource, uploadPdfToStorage } from '@/app/actions/admin';
+import { supabase } from '@/lib/core/supabase/client';
 import type { IngestResult } from '@/types';
 import { useRouter } from 'next/navigation';
 
 const EXAM_TAG_OPTIONS = ['UPSC', 'HAS', 'HPAS', 'State PSC', 'SSC', 'Banking', 'Railway'];
+
+const SOURCE_TYPE_INFO: Record<string, { label: string; emoji: string; desc: string }> = {
+    [SourceType.TEXTBOOK]: { label: 'Textbook', emoji: '📚', desc: 'Standard reference material' },
+    [SourceType.PYQ_PAPER]: { label: 'PYQ Paper', emoji: '📝', desc: 'Previous Year Questions' },
+    [SourceType.NOTIFICATION]: { label: 'Notification', emoji: '📢', desc: 'UPSC circulars & dates' },
+    [SourceType.NEWS]: { label: 'News', emoji: '📰', desc: 'News articles' },
+    [SourceType.NOTES]: { label: 'Notes', emoji: '📒', desc: 'Personal / coaching notes' },
+    [SourceType.CURRENT_AFFAIRS]: { label: 'Current Affairs', emoji: '🗓️', desc: 'Monthly compilations' },
+};
 
 const TOPIC_SUGGESTIONS: Record<string, string[]> = {
     'Polity': ['Fundamental Rights', 'DPSP', 'Parliament', 'Judiciary', 'Constitutional Amendments', 'Local Government', 'Emergency Provisions'],
@@ -39,9 +49,11 @@ export default function IngestPage() {
     const [customTopic, setCustomTopic] = useState('');
     const [examTags, setExamTags] = useState<string[]>(['UPSC']);
     const [files, setFiles] = useState<File[]>([]);
+    const [sourceType, setSourceType] = useState<SourceType>(SourceType.TEXTBOOK);
     const [isDragging, setIsDragging] = useState(false);
     const [step, setStep] = useState<ProcessingStep>('idle');
     const [queueProgress, setQueueProgress] = useState({ current: 0, total: 0 });
+    const [uploadProgress, setUploadProgress] = useState(0);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const isProcessing = step !== 'idle' && step !== 'done';
@@ -68,35 +80,52 @@ export default function IngestPage() {
         for (let i = 0; i < files.length; i++) {
             const currentFile = files[i];
             setQueueProgress({ current: i + 1, total: files.length });
+            setUploadProgress(0);
 
-            // ── Step 1: Upload raw PDF to Supabase Storage ──
+            // ── Step 1 & 2: Upload File via DNS-Proof Server Action ──
             setStep('uploading');
-            const formData = new FormData();
-            formData.append('file', currentFile);
+            try {
+                const formData = new FormData();
+                formData.append('file', currentFile);
 
-            const uploadRes = await uploadPdfToStorage(formData);
-            if (!uploadRes.success || !uploadRes.filename) {
-                errors.push(`Failed to upload ${currentFile.name}: ${uploadRes.error}`);
-                continue;
-            }
+                // This now uses our DNS bypass fallback!
+                const uploadRes = await uploadPdfToStorage(formData);
 
-            // ── Step 2: Register in source_metadata ──
-            setStep('registering');
-            const finalTopic = topic === '__custom__' ? customTopic : topic;
-            const regRes = await registerSource(uploadRes.filename, {
-                display_name: currentFile.name,
-                domain,
-                subject,
-                folder_name: finalTopic
-            });
+                if (!uploadRes.success || !uploadRes.filename) {
+                    errors.push(`Upload Failed for ${currentFile.name}: ${uploadRes.error}`);
+                    continue;
+                }
 
-            if (!regRes.success) {
-                errors.push(`Failed to register ${currentFile.name}: ${regRes.error}`);
+                const filename = uploadRes.filename;
+                setUploadProgress(100);
+
+                // ── Step 3: Register in source_metadata ──
+                setStep('registering');
+                const finalTopic = topic === '__custom__' ? customTopic : topic;
+                const regRes = await registerSource(filename, {
+                    display_name: currentFile.name,
+                    domain,
+                    subject,
+                    folder_name: finalTopic,
+                    source_type: sourceType
+                });
+
+                if (!regRes.success) {
+                    errors.push(`Failed to register ${currentFile.name}: ${regRes.error}`);
+                }
+            } catch (err: any) {
+                errors.push(`Upload Failed for ${currentFile.name}: ${err.message}`);
             }
         }
 
         if (errors.length > 0) {
-            alert(errors.join('\n'));
+            const hasFetchError = errors.some(e => e.toLowerCase().includes('fetch failed'));
+            if (hasFetchError) {
+                alert("CRITICAL CONNECTION FAILURE:\n\n" + errors.join('\n') +
+                    "\n\n🚨 POSSIBLE DNS/ISP BLOCK DETECTED:\nYour internet provider (Jio) might be blocking Supabase. Please change your DNS to Google (8.8.8.8) or Cloudflare (1.1.1.1) and try again.");
+            } else {
+                alert(errors.join('\n'));
+            }
             setStep('idle');
             return;
         }
@@ -109,22 +138,26 @@ export default function IngestPage() {
 
     return (
         <div className="space-y-12 max-w-[1400px] mx-auto">
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+            <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                 <div>
-                    <h1 className="text-4xl font-extrabold text-white tracking-tight">Smart <span className="text-white/20 italic font-medium">Ingestor</span></h1>
-                    <p className="text-sm text-white/40 mt-3 font-medium italic">High-fidelity content generation via Gemini 1.5 Flash</p>
+                    <h1 className="text-4xl font-black uppercase tracking-tighter text-white">
+                        Source <span className="text-white/20 italic font-medium">Capture</span>
+                    </h1>
+                    <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em] mt-3">
+                        High-Fidelity Intelligence Extraction
+                    </p>
                 </div>
                 <div className="flex items-center gap-4 px-6 py-3 bg-white/5 rounded-2xl border border-white/5 backdrop-blur-xl">
                     <div className="flex items-center gap-2">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_10px_#10b981]" />
-                        <span className="text-[10px] font-bold uppercase tracking-widest text-white/40">Neural Link Active</span>
+                        <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white/40">Secure Neural Link</span>
                     </div>
                 </div>
-            </div>
+            </header>
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
                 {/* ── Left: Strategic Mission Control ── */}
-                <div className="lg:col-span-7 space-y-8">
+                <div className="lg:col-span-12 xl:col-span-7 space-y-8">
                     <div className="glass-card rounded-[2.5rem] p-10 space-y-8">
                         {/* Domain & Subject Row */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -161,6 +194,30 @@ export default function IngestPage() {
                             </div>
                         </div>
 
+                        {/* Source Type Classification */}
+                        <div>
+                            <label className="block text-[10px] font-bold text-white/20 uppercase tracking-[0.3em] mb-4 pl-1">Intelligence Type</label>
+                            <div className="grid grid-cols-3 gap-2">
+                                {Object.entries(SOURCE_TYPE_INFO).map(([key, info]) => (
+                                    <button
+                                        key={key}
+                                        onClick={() => setSourceType(key as SourceType)}
+                                        className={`p-3 rounded-xl text-left transition-all border ${sourceType === key
+                                            ? 'bg-indigo-500/10 border-indigo-500/30'
+                                            : 'bg-white/5 border-white/5 hover:bg-white/10'
+                                            }`}
+                                    >
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <span className="text-sm">{info.emoji}</span>
+                                            <span className={`text-[9px] font-black uppercase tracking-widest ${sourceType === key ? 'text-indigo-400' : 'text-white/40'
+                                                }`}>{info.label}</span>
+                                        </div>
+                                        <p className="text-[8px] font-medium text-white/20 leading-relaxed">{info.desc}</p>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
                         {/* Topic Selection */}
                         <div>
                             <label className="block text-[10px] font-bold text-white/20 uppercase tracking-[0.3em] mb-4 pl-1">Strategic Topic</label>
@@ -172,7 +229,7 @@ export default function IngestPage() {
                                                 key={t}
                                                 onClick={() => { setTopic(t); setCustomTopic(''); }}
                                                 className={`px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all ${topic === t
-                                                    ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-400'
+                                                    ? 'bg-indigo-500/10 border border-indigo-500/30 text-indigo-400'
                                                     : 'bg-white/5 border border-white/5 text-white/30 hover:bg-white/10'
                                                     }`}
                                             >
@@ -217,7 +274,7 @@ export default function IngestPage() {
                                 onDragLeave={() => setIsDragging(false)}
                                 onClick={() => fileInputRef.current?.click()}
                                 className={`relative min-h-[180px] p-8 rounded-[2rem] border-2 border-dashed transition-all cursor-pointer flex flex-col items-center justify-center gap-4 ${isDragging
-                                    ? 'border-violet-500/40 bg-violet-500/5'
+                                    ? 'border-indigo-500/40 bg-indigo-500/5'
                                     : files.length > 0
                                         ? 'border-white/20 bg-white/[0.02]'
                                         : 'border-white/5 bg-black/20 hover:border-white/10'
@@ -274,13 +331,13 @@ export default function IngestPage() {
                                     </>
                                 ) : (
                                     <>
-                                        <span className="text-lg">🔥</span>
                                         <span>Execute Extraction Mission</span>
+                                        <span className="text-lg">🔥</span>
                                     </>
                                 )}
                             </div>
                             {!isProcessing && files.length > 0 && subject && finalTopic && (
-                                <div className="absolute inset-0 bg-gradient-to-r from-violet-600 to-indigo-600 opacity-90" />
+                                <div className="absolute inset-0 bg-indigo-600 opacity-90" />
                             )}
                         </motion.button>
                     </div>
@@ -305,7 +362,7 @@ export default function IngestPage() {
                                     <div className="flex flex-col gap-3">
                                         <button
                                             onClick={() => router.push('/admin/processor')}
-                                            className="w-full py-4 rounded-xl bg-[#00ffcc] text-black font-black text-[10px] uppercase tracking-[0.2em] shadow-[0_0_20px_rgba(0,255,204,0.3)] hover:scale-[1.02] transition-all"
+                                            className="w-full py-4 rounded-xl bg-indigo-600 text-white font-black text-[10px] uppercase tracking-[0.2em] shadow-[0_4px_20px_rgba(79,70,229,0.3)] hover:scale-[1.02] transition-all"
                                         >
                                             Go to Neural Processor 🧠
                                         </button>
@@ -340,14 +397,20 @@ export default function IngestPage() {
                                 </h3>
                                 <div className="w-full max-w-[200px] h-1 bg-white/5 rounded-full overflow-hidden mb-4">
                                     <motion.div
-                                        className="h-full bg-[#00ffcc]"
+                                        className="h-full bg-indigo-500"
                                         initial={{ width: "0%" }}
-                                        animate={{ width: `${(queueProgress.current / queueProgress.total) * 100}%` }}
-                                        transition={{ duration: 0.5 }}
+                                        animate={{
+                                            width: step === 'uploading' ? `${uploadProgress}%` : `${((queueProgress.current - (step === 'registering' ? 0 : 1)) / queueProgress.total) * 100}%`,
+                                            opacity: step === 'uploading' ? [0.4, 1, 0.4] : 1
+                                        }}
+                                        transition={{
+                                            width: { duration: 0.3 },
+                                            opacity: { duration: 1.5, repeat: Infinity, ease: "linear" }
+                                        }}
                                     />
                                 </div>
                                 <p className="text-[9px] font-black text-white/20 uppercase tracking-[0.3em]">
-                                    Module {queueProgress.current} of {queueProgress.total}
+                                    {step === 'uploading' ? `Uploading: ${uploadProgress}%` : `Module ${queueProgress.current} of ${queueProgress.total}`}
                                 </p>
                             </div>
                         )}

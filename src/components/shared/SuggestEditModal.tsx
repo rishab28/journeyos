@@ -121,7 +121,7 @@ export default function SuggestEditModal({ isOpen, onClose, cardId, originalFron
                                         initial={{ opacity: 0, y: 5 }}
                                         animate={{ opacity: 1, y: 0 }}
                                         exit={{ opacity: 0 }}
-                                        className={`p-3 rounded-xl text-xs font-medium mb-4 ${result.type === 'success' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                                        className={`p-3 rounded-xl text-xs font-medium mb-4 ${result.type === 'success' ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'
                                             : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
                                             }`}
                                     >

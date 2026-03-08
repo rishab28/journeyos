@@ -10,3 +10,5 @@ export * from './telemetry';
 export * from './vaultBrowser';
 export * from './settings';
 export * from './pipelineHealth';
+export * from './uploadActions';
+export * from './aiTelemetry';

@@ -31,7 +31,7 @@ export const MatrixButton = React.forwardRef<HTMLButtonElement, MatrixButtonProp
             secondary: "bg-white/10 text-white hover:bg-white/20 border border-white/10 focus:ring-white/30",
             ghost: "bg-transparent text-white/70 hover:text-white hover:bg-white/5 focus:ring-white/20",
             danger: "bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20 hover:border-red-500/40 focus:ring-red-500/50",
-            neon: "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/20 hover:border-emerald-500/60 hover:shadow-[0_0_20px_rgba(16,185,129,0.3)] focus:ring-emerald-500/50"
+            neon: "bg-indigo-500/10 text-indigo-400 border border-indigo-500/30 hover:bg-indigo-500/20 hover:border-indigo-500/60 hover:shadow-[0_0_20px_rgba(99,102,241,0.3)] focus:ring-indigo-500/50"
         };
 
         const sizes = {

@@ -3,13 +3,13 @@
 import { motion } from 'framer-motion';
 
 const SUBJECTS = [
-    { id: 'polity', name: 'Polity', icon: '🏛️', color: 'from-blue-500 to-cyan-400' },
-    { id: 'economy', name: 'Economy', icon: '📈', color: 'from-emerald-500 to-teal-400' },
+    { id: 'polity', name: 'Polity', icon: '🏛️', color: 'from-blue-600 to-indigo-400' },
+    { id: 'economy', name: 'Economy', icon: '📈', color: 'from-indigo-600 to-violet-400' },
     { id: 'history', name: 'History', icon: '📜', color: 'from-amber-600 to-orange-400' },
     { id: 'geography', name: 'Geography', icon: '🌍', color: 'from-indigo-600 to-blue-400' },
     { id: 'ir', name: 'IR', icon: '🤝', color: 'from-rose-500 to-pink-400' },
-    { id: 'scitech', name: 'Sci-Tech', icon: '🚀', color: 'from-cyan-500 to-blue-400' },
-    { id: 'environment', name: 'Env', icon: '🌿', color: 'from-green-500 to-emerald-400' },
+    { id: 'scitech', name: 'Sci-Tech', icon: '🚀', color: 'from-blue-500 to-violet-400' },
+    { id: 'environment', name: 'Env', icon: '🌿', color: 'from-indigo-500 to-blue-400' },
     { id: 'ethics', name: 'Ethics', icon: '⚖️', color: 'from-purple-600 to-violet-400' },
 ];
 
